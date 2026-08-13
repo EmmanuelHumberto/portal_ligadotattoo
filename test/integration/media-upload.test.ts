@@ -1,5 +1,6 @@
 import {HeadObjectCommand,S3Client} from '@aws-sdk/client-s3';
 import {Pool} from 'pg';
+import sharp from 'sharp';
 import {afterAll,describe,expect,it} from 'vitest';
 import {MediaRepository} from '../../apps/api/src/media/media.repository';
 import {S3MediaStorage} from '../../apps/api/src/media/s3-media-storage.adapter';
@@ -7,6 +8,7 @@ import {UploadMediaHandler} from '../../apps/api/src/media/upload-media.handler'
 import {PostgresAuditRepository} from '../../apps/api/src/platform/audit.repository';
 import {OutboxRepository} from '../../apps/api/src/platform/outbox.repository';
 import {TransactionManager} from '../../apps/api/src/platform/transaction-manager';
+import {createRuntimeProcessors,ProcessorRegistry} from '../../apps/worker/src/processors';
 
 const databaseUrl=process.env.TEST_DATABASE_URL;
 const endpoint=process.env.TEST_OBJECT_STORAGE_ENDPOINT;
@@ -32,6 +34,8 @@ integration('media upload',()=>{
  });
  let assetId:string|undefined;
  let storageKey:string|undefined;
+ let eventId:string|undefined;
+ const variantKeys:string[]=[];
 
  afterAll(async()=>{
   if(assetId) {
@@ -39,6 +43,7 @@ integration('media upload',()=>{
     `delete from ops.audit_log
       where subject_type='MediaAsset' and subject_id=$1`,[assetId],
    );
+   if(eventId)await pool.query('delete from ops.job where source_event_id=$1',[eventId]);
    await pool.query(
     `delete from ops.outbox_event
       where aggregate_type='MediaAsset' and aggregate_id=$1`,[assetId],
@@ -46,11 +51,14 @@ integration('media upload',()=>{
    await pool.query('delete from media.media_asset where id=$1',[assetId]);
   }
   if(storageKey)await storage.delete(storageKey);
+  for(const key of variantKeys)await storage.delete(key);
   await pool.end();
  });
 
  it('stores validated bytes and commits matching metadata',async()=>{
-  const png=Buffer.from([137,80,78,71,13,10,26,10,0,0,0,0]);
+  const png=await sharp({
+   create:{width:1600,height:900,channels:3,background:'#663399'},
+  }).png().toBuffer();
   const result=await handler.execute({
    buffer:png,size:png.length,mimetype:'image/png',originalname:'ignored.png',
   } as Express.Multer.File,'integration-admin');
@@ -65,5 +73,42 @@ integration('media upload',()=>{
   expect(row.rows[0]?.sha256).toMatch(/^[a-f0-9]{64}$/);
   expect(object.ContentType).toBe('image/png');
   expect(object.Metadata?.sha256).toBe(row.rows[0]?.sha256);
+ });
+
+ it('routes the upload and creates three WebP variants',async()=>{
+  const outbox=await pool.query(
+   `select id,event_type,event_version,aggregate_type,aggregate_id,payload
+      from ops.outbox_event
+     where aggregate_type='MediaAsset' and aggregate_id=$1`,[assetId],
+  );
+  const row=outbox.rows[0];
+  eventId=row.id;
+  const registry=new ProcessorRegistry(createRuntimeProcessors(pool,{
+   OBJECT_STORAGE_BUCKET:bucket,OBJECT_STORAGE_ENDPOINT:endpoint,
+   OBJECT_STORAGE_REGION:'us-east-1',OBJECT_STORAGE_ACCESS_KEY:accessKey,
+   OBJECT_STORAGE_SECRET_KEY:secretKey,OBJECT_STORAGE_FORCE_PATH_STYLE:'true',
+  }));
+  for(let attempt=0;attempt<4;attempt++)
+   await registry.tick({signal:new AbortController().signal});
+  const [published,jobs]=await Promise.all([
+   pool.query('select status from ops.outbox_event where id=$1',[eventId]),
+   pool.query('select status,count(*) over()::int count from ops.job where source_event_id=$1',[eventId]),
+  ]);
+  expect(published.rows[0]?.status).toBe('PUBLISHED');
+  expect(jobs.rows[0]).toMatchObject({status:'DONE',count:1});
+  const variants=await pool.query(
+   `select variant_key,storage_key,width,height,mime_type
+      from media.media_variant where media_asset_id=$1 order by width`,[assetId],
+  );
+  expect(variants.rows.map(item=>item.variant_key)).toEqual(['thumb','card','hero']);
+  for(const variant of variants.rows) {
+   variantKeys.push(variant.storage_key);
+   const object=await s3.send(new HeadObjectCommand({
+    Bucket:bucket,Key:variant.storage_key,
+   }));
+   expect(variant.mime_type).toBe('image/webp');
+   expect(object.ContentType).toBe('image/webp');
+   expect(object.Metadata?.derived).toBe('true');
+  }
  });
 });

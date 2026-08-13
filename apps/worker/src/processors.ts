@@ -10,6 +10,8 @@ import {HttpAcquirer} from './ingestion/http-acquirer';
 import {IngestionRunner} from './ingestion/ingestion-runner';
 import {JobHandler,JobRunner} from './job-runner';
 import {MediaRightsExpiryHandler} from './media/rights-expiry.handler';
+import {ImageVariantHandler} from './media/image-variant.handler';
+import {createImageProcessor} from './media/s3-image-processor';
 import {OutboxDispatcher} from './outbox-dispatcher';
 import {CanonicalChangeHandler} from './projections/canonical-change.handler';
 import {ProductSearchProjectionHandler} from './projections/product-search.handler';
@@ -29,7 +31,9 @@ export class ProcessorRegistry{
  }
 }
 
-export function createRuntimeProcessors(pool:Pool):Processor[] {
+export function createRuntimeProcessors(
+ pool:Pool,env:NodeJS.ProcessEnv=process.env,
+):Processor[] {
  const ingestion=new IngestionRunner(pool,new HttpAcquirer());
  const handlers:JobHandler[]=[
   new ProductSearchProjectionHandler(pool),
@@ -40,6 +44,7 @@ export function createRuntimeProcessors(pool:Pool):Processor[] {
   new PriceTrendProjectionHandler(pool),
   new ListingStalenessHandler(pool),
   new MediaRightsExpiryHandler(pool),
+  new ImageVariantHandler(pool,createImageProcessor(env)),
   new ExtractionHandler(pool,new SimpleContentExtractor()),
   {
    type:'ingestion.run_target',

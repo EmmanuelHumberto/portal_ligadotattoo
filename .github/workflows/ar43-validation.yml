@@ -27,6 +27,12 @@ jobs:
       TEST_OBJECT_STORAGE_ENDPOINT: http://127.0.0.1:9000
       TEST_OBJECT_STORAGE_ACCESS_KEY: portal_ci
       TEST_OBJECT_STORAGE_SECRET_KEY: portal_ci_secret
+      OBJECT_STORAGE_ENDPOINT: http://127.0.0.1:9000
+      OBJECT_STORAGE_BUCKET: portal-media-test
+      OBJECT_STORAGE_REGION: us-east-1
+      OBJECT_STORAGE_ACCESS_KEY: portal_ci
+      OBJECT_STORAGE_SECRET_KEY: portal_ci_secret
+      OBJECT_STORAGE_FORCE_PATH_STYLE: "true"
     steps:
     - uses: actions/checkout@v4
     - uses: actions/setup-node@v4

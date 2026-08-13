@@ -42,3 +42,17 @@ Novos assets começam com direitos `UNKNOWN`; portanto, não aparecem nos DTOs
 públicos até que direitos `PERMITTED` sejam registrados. O bucket de originais
 não deve possuir política pública. `MEDIA_PUBLIC_BASE_URL` deve apontar para a
 camada de entrega/CDN destinada apenas a objetos publicáveis.
+
+## Variantes
+
+O evento `media.asset_uploaded` cria um job idempotente
+`media.create_variants`. O Worker lê o original privado e produz WebP sem
+ampliação artificial:
+
+- `thumb`: largura máxima de 320 px;
+- `card`: largura máxima de 640 px;
+- `hero`: largura máxima de 1280 px.
+
+Orientação EXIF é aplicada e metadados do original não são copiados. As chaves
+derivadas são determinísticas, portanto retries sobrescrevem os mesmos objetos.
+O decoder rejeita originais acima de 25 MiB ou 40 milhões de pixels.

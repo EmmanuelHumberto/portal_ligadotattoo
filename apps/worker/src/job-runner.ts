@@ -80,7 +80,9 @@ export class JobRunner {
         await this.pool.query(
           `update ops.job
               set status='RETRY', attempts=$2,
-                  available_at=now() + (interval '1 second' * least(900, power(2,$2))),
+                  available_at=now() + (
+                    interval '1 second' * least(900,power(2,$2::integer))
+                  ),
                   locked_at=null,updated_at=now(),last_error=$3
             where id=$1`,
           [job.id, attempts,error],
