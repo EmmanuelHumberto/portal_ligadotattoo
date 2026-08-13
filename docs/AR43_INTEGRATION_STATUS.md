@@ -12,13 +12,19 @@ Closed structurally in AR-43:
 - monorepo-aware Dockerfiles;
 - CI PostgreSQL + migration + full verification gate.
 
-Requires execution/evidence in the assembled repository:
+Implemented and locally verified in the assembled repository:
 - npm lockfile resolution against selected dependency versions;
-- complete historical module import reconciliation;
-- all historical SQL migration dependency reconciliation;
-- concrete durable queue adapter;
-- concrete object-storage/media adapter;
-- full Playwright fixtures;
-- AR-36/AR-38 exhaustive regression execution.
+- historical module import and SQL migration reconciliation;
+- PostgreSQL durable jobs, scheduler, outbox and Worker heartbeat;
+- S3-compatible upload, private delivery and derived media variants;
+- synthetic Playwright fixtures and public/anonymously protected journeys;
+- full static, typecheck, lint, unit/integration and production-build gate.
+
+Still requires release-candidate execution/evidence:
+- privileged Playwright journeys with a real staging OIDC session;
+- AR-36/AR-38 security and performance execution against exact artifacts;
+- provider validation with controlled staging credentials;
+- backup/restore and rollback rehearsal;
+- immutable image, monitoring and operational ownership evidence.
 
 These items feed the final closure work; failures must not be relabeled as PASS.

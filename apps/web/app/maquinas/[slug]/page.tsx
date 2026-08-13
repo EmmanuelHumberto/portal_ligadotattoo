@@ -1,4 +1,5 @@
 import {api} from '../../../lib/api';
+import {MediaGallery} from '../../../components/media-gallery';
 import {SiteHeader} from '../../../components/site-header';
 
 export default async function Product({params}:{params:Promise<{slug:string}>}){
@@ -10,7 +11,7 @@ export default async function Product({params}:{params:Promise<{slug:string}>}){
  return <><SiteHeader/><main className="shell productPage">
   <div className="breadcrumbs">Início › Máquinas › {p.brand?.name} › {p.name}</div>
   <section className="productHero">
-   <div className="card gallery">{p.media?.[0]&&<img src={p.media[0].url} alt={p.media[0].alt??p.name}/>}</div>
+   <MediaGallery items={p.media??[]}/>
    <div className="summary"><span className="badge">{p.isSyntheticFixture?'DADOS SINTÉTICOS':'DADOS VERIFICADOS'}</span><h1>{p.name}</h1>
     <p className="muted">{p.brand?.name} · {p.machineType}</p><p>{p.summary}</p>
     <dl>{(p.specifications??[]).slice(0,7).map((s:any)=><div key={s.key}><dt>{s.label}</dt><dd>{s.value}</dd></div>)}</dl>

@@ -18,7 +18,8 @@
     "architecture:check": "node scripts/architecture-check.mjs",
     "security:check": "sh scripts/check-secrets.sh",
     "verify:static": "npm run db:migrate:verify && npm run architecture:check && npm run security:check",
-    "verify:full": "npm run verify:static && npm run typecheck && npm run lint && npm run test && npm run build"
+    "verify:full": "npm run verify:static && npm run typecheck && npm run lint && npm run test && npm run build",
+    "verify:release": "sh scripts/rc-verify.sh"
   },
   "devDependencies": {
     "@next/eslint-plugin-next": "^16.3.0",

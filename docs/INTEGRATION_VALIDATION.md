@@ -6,7 +6,7 @@ Data: 2026-08-13
 
 - pacotes AR17–AR45 consolidados em um único monorepo;
 - lockfile npm gerado;
-- cadeia canônica de 15 migrations reconciliada;
+- cadeia canônica de 16 migrations reconciliada;
 - migrations aplicadas com sucesso em PostgreSQL 16 limpo;
 - bootstrap aplicado com sucesso;
 - API iniciada com todos os módulos NestJS registrados;
@@ -45,6 +45,7 @@ Data: 2026-08-13
 - política SSRF, IPs reservados, DNS misto, deadlines e redirects: 31 testes;
 - readiness, timeouts, lifecycle e tratamento de falhas do pool: 10 testes;
 - persistência, classificação e métricas de heartbeat do Worker: 8 testes;
+- contrato do executor reproduzível de release: 3 testes;
 - typecheck de API, Web e Worker;
 - lint TypeScript/Next.js;
 - builds de produção de API, Web e Worker;
@@ -60,6 +61,8 @@ Data: 2026-08-13
 - executar os cenários Playwright privilegiados com sessão OIDC administrativa;
 - executar testes de carga, segurança e rollback do AR38/AR44;
 - produzir imagens imutáveis e evidências do ambiente de staging.
+- completar as superfícies públicas de notícias, blog, eventos, fabricantes e busca;
+- completar as áreas administrativas além do dashboard operacional inicial.
 
 Este resultado promove o projeto de “formulação completa” para “baseline local
 integrada e compilável”. Não representa aprovação para produção.

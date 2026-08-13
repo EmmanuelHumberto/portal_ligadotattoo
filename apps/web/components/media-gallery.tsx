@@ -1,17 +1,18 @@
 'use client';
 import {useState} from 'react';
+import {PortalImage} from './portal-image';
 
 export function MediaGallery({items}:{items:any[]}){
  const [index,setIndex]=useState(0);
  if(!items?.length)return <div className="card gallery emptyMedia">Sem mídia pública</div>;
  const current=items[index];
  return <div className="mediaGallery">
-  <div className="card gallery"><img src={current.url}
-    alt={current.alt??''}/></div>
+  <div className="card gallery"><PortalImage src={current.url}
+    alt={current.alt??''} width={900} height={900} unoptimized/></div>
   <div className="thumbRail" aria-label="Galeria">
    {items.map((x,i)=><button key={x.id??i} aria-current={i===index}
-    onClick={()=>setIndex(i)}><img src={x.variants?.[0]?.url??x.url}
-    alt=""/></button>)}
+    onClick={()=>setIndex(i)}><PortalImage src={x.variants?.[0]?.url??x.url}
+    alt="" width={160} height={160} unoptimized/></button>)}
   </div>
  </div>
 }

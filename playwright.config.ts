@@ -2,6 +2,7 @@ import {defineConfig,devices} from '@playwright/test';
 
 const webBaseUrl=process.env.PLAYWRIGHT_WEB_BASE_URL ?? 'http://localhost:3000';
 const apiBaseUrl=process.env.PLAYWRIGHT_API_BASE_URL ?? 'http://localhost:3001';
+const manageServers=process.env.PLAYWRIGHT_MANAGE_SERVERS!=='false';
 
 export default defineConfig({
   testDir:'./test/e2e',
@@ -19,7 +20,7 @@ export default defineConfig({
     name:'chromium',
     use:{...devices['Desktop Chrome']},
   }],
-  webServer:[
+  webServer:manageServers?[
     {
       command:'npm run build -w @portal/api && npm run start -w @portal/api',
       url:`${apiBaseUrl}/health/live`,
@@ -32,5 +33,5 @@ export default defineConfig({
       reuseExistingServer:!process.env.CI,
       timeout:120_000,
     },
-  ],
+  ]:undefined,
 });

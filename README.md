@@ -60,3 +60,7 @@ A fronteira SSRF da ingestão está documentada em
 [docs/SAFE_INGESTION.md](docs/SAFE_INGESTION.md).
 Heartbeat e saúde assíncrona do Worker estão em
 [docs/WORKER_HEALTH.md](docs/WORKER_HEALTH.md).
+O gate reproduzível e o pacote de evidências de release estão em
+[docs/RELEASE_VERIFICATION.md](docs/RELEASE_VERIFICATION.md).
+O avanço consolidado do roadmap está em
+[docs/IMPLEMENTATION_STATUS.md](docs/IMPLEMENTATION_STATUS.md).
