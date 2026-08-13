@@ -58,3 +58,5 @@ Os limites HTTP e o smoke de carga estão em
 [docs/RATE_LIMITING.md](docs/RATE_LIMITING.md).
 A fronteira SSRF da ingestão está documentada em
 [docs/SAFE_INGESTION.md](docs/SAFE_INGESTION.md).
+Heartbeat e saúde assíncrona do Worker estão em
+[docs/WORKER_HEALTH.md](docs/WORKER_HEALTH.md).

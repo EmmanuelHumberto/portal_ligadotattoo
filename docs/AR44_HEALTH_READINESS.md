@@ -23,5 +23,12 @@ Worker:
 - operational dashboard/heartbeat must prove processor loop is advancing;
 - queue/outbox lag remains the authoritative async-health signal.
 
+Implemented Worker behavior:
+- UUID efêmero por processo, sem hostname persistido;
+- início/fim, duração e falhas de cada ciclo registrados no PostgreSQL;
+- startup grace e limiar de heartbeat obsoleto configuráveis;
+- processo parado/travado degrada o readiness administrativo;
+- `SIGTERM`/`SIGINT` registra `STOPPED` antes de fechar o pool.
+
 A liveness endpoint must not fail merely because an optional AI provider is down.
 AI provider health is surfaced separately and handled through workload fallback.

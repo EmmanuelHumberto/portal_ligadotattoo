@@ -27,10 +27,16 @@ export class ProcessorRegistry{
  constructor(readonly processors:Processor[]){}
  async tick(ctx:ProcessorContext){
   const results=await Promise.allSettled(this.processors.map(p=>p.tick(ctx)));
+  let failures=0;
   results.forEach((r,i)=>{
-   if(r.status==='rejected')console.error('processor_failed',
-    {processor:this.processors[i]?.key,error:String(r.reason)});
+   if(r.status==='rejected'){
+    failures++;
+    console.error('processor_failed',{
+     processor:this.processors[i]?.key,errorCode:errorCode(r.reason),
+    });
+   }
   });
+  return {failures};
  }
 }
 
@@ -78,4 +84,9 @@ export function createRuntimeProcessors(
 
 function asRecord(value:unknown):Record<string,unknown> {
  return value && typeof value==='object' ? value as Record<string,unknown> : {};
+}
+
+function errorCode(error:unknown) {
+ return error&&typeof error==='object'&&'code' in error
+  ? String(error.code).slice(0,80):'PROCESSOR_ERROR';
 }

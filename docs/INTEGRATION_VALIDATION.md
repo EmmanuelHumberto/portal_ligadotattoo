@@ -1,6 +1,6 @@
 # Validação da integração
 
-Data: 2026-08-12
+Data: 2026-08-13
 
 ## Resultado local
 
@@ -26,6 +26,7 @@ Data: 2026-08-12
 - headers defensivos e rate limiting por classe conectados ao runtime da API;
 - aquisição HTTPS com DNS pinado, proteção SSRF e redirects revalidados;
 - readiness real de banco/schema e sobrevivência da API a falhas do pool;
+- heartbeat multi-instância comprovando avanço e parada graciosa do Worker;
 - `npm run verify:full` aprovado.
 
 ## Cobertura automatizada atual
@@ -43,6 +44,7 @@ Data: 2026-08-12
 - rate limiting, classificação de rotas e headers defensivos: 4 testes;
 - política SSRF, IPs reservados, DNS misto, deadlines e redirects: 31 testes;
 - readiness, timeouts, lifecycle e tratamento de falhas do pool: 10 testes;
+- persistência, classificação e métricas de heartbeat do Worker: 8 testes;
 - typecheck de API, Web e Worker;
 - lint TypeScript/Next.js;
 - builds de produção de API, Web e Worker;

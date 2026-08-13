@@ -49,7 +49,7 @@ export class OperationsQuery {
   }
 
   async dashboard() {
-    const [jobs,jobTypes,outbox,dead,ai,ingestion,media,schedule]=await Promise.all([
+    const [jobs,jobTypes,workers,outbox,dead,ai,ingestion,media,schedule]=await Promise.all([
       this.pool.query(`select status,count(*)::int count from ops.job group by status`),
       this.pool.query(
         `select job_type,status,count(*)::int count,
@@ -58,6 +58,14 @@ export class OperationsQuery {
            from ops.job
           where created_at>=now()-interval '24 hours'
           group by job_type,status order by job_type,status`,
+      ),
+      this.pool.query(
+        `select status,count(*)::int count,
+                max(last_seen_at) last_seen_at,
+                max(last_tick_completed_at) last_tick_completed_at,
+                max(last_tick_duration_ms) max_tick_duration_ms,
+                sum(coalesce(last_tick_failures,0))::int last_tick_failures
+           from ops.worker_heartbeat group by status order by status`,
       ),
       this.pool.query(`select status,count(*)::int count from ops.outbox_event group by status`),
       this.pool.query(`select status,count(*)::int count from ops.dead_letter group by status`),
@@ -91,6 +99,7 @@ export class OperationsQuery {
       outbox:outbox.rows,deadLetters:dead.rows,
       ai24h:ai.rows,ingestion24h:ingestion.rows,mediaRights:media.rows,
       scheduler:schedule.rows[0],
+      workers:workers.rows,
       generatedAt:new Date().toISOString(),
     };
   }

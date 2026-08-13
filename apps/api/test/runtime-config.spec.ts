@@ -39,6 +39,15 @@ describe('runtime security configuration',()=>{
     })).toThrow(/DB_POOL_MAX/);
   });
 
+  it('bounds the worker heartbeat stale threshold',()=>{
+    expect(validateRuntimeConfig({
+      DATABASE_URL:databaseUrl,WORKER_HEARTBEAT_STALE_SECONDS:'180',
+    }).workerHeartbeatStaleSeconds).toBe(180);
+    expect(()=>validateRuntimeConfig({
+      DATABASE_URL:databaseUrl,WORKER_HEARTBEAT_STALE_SECONDS:'29',
+    })).toThrow(/WORKER_HEARTBEAT_STALE_SECONDS/);
+  });
+
   it('requires independent session and rate-limit secrets in production',()=>{
     const production={
       NODE_ENV:'production',DATABASE_URL:databaseUrl,
