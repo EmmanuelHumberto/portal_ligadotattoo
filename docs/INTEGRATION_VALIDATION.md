@@ -23,6 +23,7 @@ Data: 2026-08-12
 - scheduler PostgreSQL idempotente e métricas operacionais por tipo de job;
 - fixtures sintéticas idempotentes bloqueadas em produção;
 - jornadas Playwright de catálogo, filtro, detalhe, oferta e comparação validadas;
+- headers defensivos e rate limiting por classe conectados ao runtime da API;
 - `npm run verify:full` aprovado.
 
 ## Cobertura automatizada atual
@@ -36,7 +37,8 @@ Data: 2026-08-12
 - geração Sharp, configuração, chaves de retry e variantes S3: 4 testes;
 - scheduler, frequências, deduplicação, polling, retenção e publicação atômica: 6 testes;
 - política de ativação das fixtures sintéticas: 3 testes;
-- Playwright público e proteção administrativa anônima: 5 testes executados;
+- Playwright público e proteção administrativa anônima: 6 testes executados;
+- rate limiting, classificação de rotas e headers defensivos: 4 testes;
 - typecheck de API, Web e Worker;
 - lint TypeScript/Next.js;
 - builds de produção de API, Web e Worker;

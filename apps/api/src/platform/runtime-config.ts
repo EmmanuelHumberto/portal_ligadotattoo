@@ -1,6 +1,6 @@
 export type RuntimeConfig={
  nodeEnv:string;port:number;databaseUrl:string;redisUrl?:string;
- allowedBrowserOrigins:string[];
+ allowedBrowserOrigins:string[];trustProxyHops:number;
  ai:{
   defaultProvider:string;
   fallbackOrder:string[];
@@ -15,10 +15,13 @@ export function validateRuntimeConfig(env:NodeJS.ProcessEnv):RuntimeConfig{
  const production=env.NODE_ENV==='production';
  if(production&&String(env.SESSION_SIGNING_SECRET??'').length<32)
   throw new Error('SESSION_SIGNING_SECRET must be >=32 chars in production');
+ if(production&&String(env.RATE_LIMIT_HASH_SALT??'').length<32)
+  throw new Error('RATE_LIMIT_HASH_SALT must be >=32 chars in production');
  return {
   nodeEnv:env.NODE_ENV??'development',port,databaseUrl,
   redisUrl:env.REDIS_URL,
   allowedBrowserOrigins:csv(env.ALLOWED_BROWSER_ORIGINS),
+  trustProxyHops:boundedInteger(env.TRUST_PROXY_HOPS,0,0,3,'TRUST_PROXY_HOPS'),
   ai:{
    defaultProvider:env.AI_DEFAULT_PROVIDER??'openai',
    fallbackOrder:csv(env.AI_FALLBACK_ORDER),
@@ -31,4 +34,12 @@ export function validateRuntimeConfig(env:NodeJS.ProcessEnv):RuntimeConfig{
 const csv=(v?:string)=>String(v??'').split(',').map(x=>x.trim()).filter(Boolean);
 function required(env:NodeJS.ProcessEnv,key:string){
  const v=env[key]?.trim();if(!v)throw new Error(`Missing required environment variable: ${key}`);return v;
+}
+
+function boundedInteger(
+ value:string|undefined,fallback:number,min:number,max:number,key:string,
+){
+ const result=Number(value??fallback);
+ if(!Number.isInteger(result)||result<min||result>max)throw new Error(`Invalid ${key}`);
+ return result;
 }

@@ -45,3 +45,16 @@ test('robots and sitemap are public',async({request})=>{
  expect((await request.get('/robots.txt')).ok()).toBeTruthy();
  expect((await request.get('/sitemap.xml')).ok()).toBeTruthy();
 });
+
+test('Web and API expose defensive headers',async({request})=>{
+ const web=await request.get('/');
+ expect(web.headers()['x-content-type-options']).toBe('nosniff');
+ expect(web.headers()['x-frame-options']).toBe('DENY');
+ expect(web.headers()['content-security-policy']).toContain("object-src 'none'");
+ const api=await request.get(`${apiBase}/health/live`);
+ expect(api.headers()['x-content-type-options']).toBe('nosniff');
+ expect(api.headers()['x-frame-options']).toBe('DENY');
+ expect(api.headers()['x-powered-by']).toBeUndefined();
+ expect(api.headers()['ratelimit-limit']).toBe('240');
+ expect(api.headers()['ratelimit-remaining']).toBeTruthy();
+});

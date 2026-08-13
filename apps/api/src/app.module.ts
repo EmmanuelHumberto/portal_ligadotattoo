@@ -7,7 +7,7 @@ import {SecurityModule} from './security/security.module';
 import {SystemController} from './system.controller';
 
 @Module({
- imports:[DatabaseModule,IamModule,SecurityModule,FeaturesModule],
+ imports:[DatabaseModule,SecurityModule,IamModule,FeaturesModule],
  controllers:[HealthController,SystemController],
 })
 export class AppModule {}

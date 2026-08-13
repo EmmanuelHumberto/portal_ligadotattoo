@@ -18,7 +18,7 @@ export const options={
 };
 export default function(){
  const base=__ENV.BASE_URL;
- const routes=['/','/maquinas','/noticias','/eventos'];
+ const routes=['/','/maquinas','/robots.txt','/sitemap.xml'];
  const r=http.get(base+routes[Math.floor(Math.random()*routes.length)]);
  check(r,{'2xx/3xx':x=>x.status>=200&&x.status<400});
  sleep(Math.random()*2);

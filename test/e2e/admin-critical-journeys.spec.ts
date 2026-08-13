@@ -25,4 +25,6 @@ test.describe('privileged admin',()=>{
 test('anonymous admin access is rejected',async({request})=>{
  const r=await request.get(`${apiBase}/admin/audit`);
  expect([401,403]).toContain(r.status());
+ expect(r.headers()['ratelimit-limit']).toBe('180');
+ expect(r.headers()['x-content-type-options']).toBe('nosniff');
 });

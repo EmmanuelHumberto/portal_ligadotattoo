@@ -54,3 +54,5 @@ administrativas, consulte [docs/OIDC_CONFIGURATION.md](docs/OIDC_CONFIGURATION.m
 O fluxo de mídia está em [docs/MEDIA_STORAGE.md](docs/MEDIA_STORAGE.md).
 O agendamento do Worker está em
 [docs/WORKER_SCHEDULER.md](docs/WORKER_SCHEDULER.md).
+Os limites HTTP e o smoke de carga estão em
+[docs/RATE_LIMITING.md](docs/RATE_LIMITING.md).
