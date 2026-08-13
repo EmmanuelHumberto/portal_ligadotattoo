@@ -9,7 +9,7 @@ Atualizado em 2026-08-13.
 | Formulação AR-01–AR-45 | Completa | 45 de 45 artefatos planejados |
 | Plataforma integrada | Em andamento, núcleo local aprovado | Web, API, Worker, PostgreSQL, MinIO, migrations e gates automatizados |
 | Experiência pública | Baseline ampla | Home, busca, catálogo, produto, comparação, marcas, notícias, blog, eventos e ofertas funcionais |
-| Administração | Parcial | Dashboard inicial e APIs protegidas; demais workspaces ainda não estão completos |
+| Administração | Parcial, baseline navegável | Shell responsivo e workspaces somente leitura para operações, editorial, knowledge, ingestão, mídia, comércio, IA e auditoria; mutações e login dependem do OIDC |
 | Staging | Pendente | Depende de infraestrutura, OIDC, imagens imutáveis e execução do candidato |
 | Produção | Pendente/NO-GO por ausência de evidência | Não há autorização de lançamento registrada |
 
@@ -24,12 +24,13 @@ Atualizado em 2026-08-13.
 - fixtures sintéticas, testes unitários/integrados e jornadas Playwright públicas;
 - busca/autocomplete, fabricantes e editorial público com projeções navegáveis;
 - CSP estrita com nonce por requisição e hidratação das ilhas client-side validada;
+- Admin server-side encaminha a sessão OIDC sem expor credenciais ao navegador e mantém estado bloqueado quando não há sessão;
 - gate de release capaz de testar um candidato externo e guardar evidências.
 
 ## Próximos blocos de implementação
 
 1. Enriquecer conteúdo, mídia e dados reais das superfícies públicas.
-2. Expandir o Admin para catálogo, knowledge, mídia, ingestão, editorial, IA e auditoria.
+2. Completar o Admin com catálogo/inteligência, filtros, detalhes e mutações protegidas por OIDC/CSRF.
 3. Executar Playwright privilegiado com OIDC real em staging.
 4. Automatizar imagens imutáveis, scans, carga, rollback e pacote de evidências.
 5. Validar backup/restore, alertas, dashboards e operação de incidentes.

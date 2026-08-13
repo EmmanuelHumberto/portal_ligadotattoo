@@ -23,8 +23,16 @@ configuradas. Use
 já existentes.
 
 O cenário administrativo anônimo é sempre executado e exige `401` ou `403`.
-Os cenários privilegiados só rodam quando
-`PLAYWRIGHT_ADMIN_STORAGE_STATE` aponta para um estado Playwright criado por um
-login OIDC real; não existe bypass de autenticação para testes. O cenário de
+Os cenários privilegiados só rodam quando `PLAYWRIGHT_ADMIN_ACCESS_TOKEN`
+contém um access token emitido pelo OIDC real. Opcionalmente,
+`PLAYWRIGHT_ADMIN_STORAGE_STATE` pode apontar para o estado Playwright criado
+pelo mesmo login. O token é enviado ao Web e à API como `Bearer`; não existe
+bypass de autenticação para testes. O cenário de
 autocomplete também falha se a CSP impedir a hidratação React, protegendo a
 integração do nonce.
+
+No Web, o adaptador de implantação pode encaminhar o header `Authorization`
+ou gravar o access token em cookie HttpOnly. O nome padrão é `pt_session` e
+pode ser alterado por `ADMIN_SESSION_COOKIE`. A URL de entrada do provedor é
+exibida quando `ADMIN_LOGIN_URL` está configurada. Nenhuma dessas opções cria
+credenciais ou desabilita a validação OIDC/JWKS da API.

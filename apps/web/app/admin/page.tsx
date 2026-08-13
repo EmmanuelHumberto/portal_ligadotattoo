@@ -1,14 +1,42 @@
-import {adminApi} from '../../lib/api';
+import {AdminAccessState,AdminPageHeader,Metric,sumCounts} from '../../components/admin-resource';
+import {adminApi} from '../../lib/admin-api';
+
+type Dashboard={
+ jobs:unknown[];outbox:unknown[];deadLetters:unknown[];ai24h:unknown[];
+ ingestion24h:unknown[];mediaRights:unknown[];workers:unknown[];
+ scheduler?:{editorial_due?:number;crawl_targets_enabled?:number};generatedAt:string;
+};
 
 export default async function Admin(){
- const d=await adminApi('/admin/operations/dashboard');
- return <main className="adminShell"><aside className="adminNav"><b>ADMIN PORTAL</b>
-  {['Dashboard','Catálogo','Conhecimento','Editorial','Fontes & Ingestão','IA Hub','Comercial','Mídia','Operações','Auditoria'].map(x=><a key={x}>{x}</a>)}
- </aside><section className="adminMain"><h1>Visão Geral</h1>
-  <div className="grid metrics"><Metric n="Jobs" v={sum(d.jobs)}/><Metric n="IA · 24h" v={sum(d.ai24h)}/><Metric n="Ingestões · 24h" v={sum(d.ingestion24h)}/><Metric n="Mídias" v={sum(d.mediaRights)}/></div>
-  <div className="grid adminPanels"><div className="card panel"><h2>Operações</h2><pre>{JSON.stringify(d.jobs,null,2)}</pre></div>
-  <div className="card panel"><h2>Health operacional</h2><pre>{JSON.stringify(d.outbox,null,2)}</pre></div></div>
- </section></main>
+ const result=await adminApi<Dashboard>('/admin/operations/dashboard');
+ if(!result.ok)return <AdminAccessState status={result.status}/>;
+ const d=result.data;
+ return <>
+  <AdminPageHeader eyebrow="Operação em tempo real" title="Visão geral"
+   description={`Projeção administrativa atualizada em ${new Date(d.generatedAt).toLocaleString('pt-BR')}.`}/>
+  <div className="grid metrics">
+   <Metric label="Jobs" value={sumCounts(d.jobs)}/>
+   <Metric label="IA · 24h" value={sumCounts(d.ai24h)}/>
+   <Metric label="Ingestões · 24h" value={sumCounts(d.ingestion24h)}/>
+   <Metric label="Mídias" value={sumCounts(d.mediaRights)}/>
+  </div>
+  <div className="grid adminPanels">
+   <Summary title="Fila de jobs" rows={d.jobs}/>
+   <Summary title="Outbox" rows={d.outbox}/>
+   <Summary title="Workers" rows={d.workers}/>
+   <div className="card panel"><h2>Agenda</h2>
+    <dl className="adminFacts"><div><dt>Editoriais pendentes</dt><dd>{d.scheduler?.editorial_due??0}</dd></div>
+     <div><dt>Alvos de coleta</dt><dd>{d.scheduler?.crawl_targets_enabled??0}</dd></div></dl>
+   </div>
+  </div>
+ </>;
 }
-function Metric({n,v}:{n:string;v:number}){return <div className="card metric"><span>{n}</span><strong>{v.toLocaleString('pt-BR')}</strong></div>}
-function sum(a:any[]=[]){return a.reduce((n,x)=>n+Number(x.count??0),0)}
+
+function Summary({title,rows}:{title:string;rows:unknown[]}){
+ return <div className="card panel"><h2>{title}</h2>
+  {rows.length?<ul className="adminSummary">{rows.map((row,index)=><li key={index}>
+   <span>{String((row as Record<string,unknown>).status??'TOTAL')}</span>
+   <strong>{String((row as Record<string,unknown>).count??0)}</strong>
+  </li>)}</ul>:<p className="muted">Sem ocorrências.</p>}
+ </div>;
+}

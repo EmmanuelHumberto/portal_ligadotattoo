@@ -15,9 +15,3 @@ export async function apiOrNull(path:string){
   throw error;
  }
 }
-export async function adminApi(path:string){
- // Server-side session forwarding belongs to the auth adapter.
- const r=await fetch(base+path,{cache:'no-store'});
- if(!r.ok) throw new Error(`Admin API ${r.status}`);
- return r.json();
-}
