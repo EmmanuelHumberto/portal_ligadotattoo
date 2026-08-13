@@ -4,7 +4,8 @@ import {SiteHeader} from '../../../components/site-header';
 export default async function Product({params}:{params:Promise<{slug:string}>}){
  const {slug}=await params;
  const [p,offers]=await Promise.all([
-  api(`/public/products/${slug}`),api(`/public/products/${slug}/offers-v2`)
+  api(`/public/products/${slug}`,{cache:'no-store'}),
+  api(`/public/products/${slug}/offers-v2`),
  ]);
  return <><SiteHeader/><main className="shell productPage">
   <div className="breadcrumbs">Início › Máquinas › {p.brand?.name} › {p.name}</div>

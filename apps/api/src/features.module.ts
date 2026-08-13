@@ -39,10 +39,9 @@ import { MediaLibraryController } from './media/media-library.controller';
 import { MediaLibraryQuery } from './media/media-library.query';
 import { MediaController } from './media/media.controller';
 import { MediaRepository } from './media/media.repository';
-import {
-  MEDIA_DELIVERY,MEDIA_STORAGE,MediaDeliveryPort,
-} from './media/media-storage.port';
+import {MEDIA_DELIVERY,MEDIA_STORAGE} from './media/media-storage.port';
 import { PublicMediaQuery } from './media/public-media.query';
+import {createMediaDelivery} from './media/s3-media-delivery.adapter';
 import {createMediaStorage} from './media/s3-media-storage.adapter';
 import { SetMediaRightsHandler } from './media/set-media-rights.handler';
 import {UploadMediaHandler} from './media/upload-media.handler';
@@ -114,12 +113,7 @@ const providers = [
   },
   {
     provide: MEDIA_DELIVERY,
-    useFactory: (): MediaDeliveryPort => ({
-      publicUrl: (storageKey: string) => {
-        const base = (process.env.MEDIA_PUBLIC_BASE_URL ?? '').replace(/\/$/, '');
-        return base ? `${base}/${storageKey}` : `/media/${storageKey}`;
-      },
-    }),
+    useFactory:()=>createMediaDelivery(process.env),
   },
 ];
 

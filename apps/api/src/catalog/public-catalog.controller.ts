@@ -1,5 +1,5 @@
 import {
-  Controller, Get, NotFoundException, Param, Query,
+  Controller,Get,Header,NotFoundException,Param,Query,
 } from '@nestjs/common';
 import { Public } from '../iam/public.decorator';
 import { PublicProductQuery } from './public-product.query';
@@ -32,6 +32,7 @@ export class PublicCatalogController {
   }
 
   @Get(':slug')
+  @Header('Cache-Control','private, no-store')
   async detail(@Param('slug') slug: string) {
     const product = await this.products.bySlug(slug);
     if (!product) throw new NotFoundException('Product not found');

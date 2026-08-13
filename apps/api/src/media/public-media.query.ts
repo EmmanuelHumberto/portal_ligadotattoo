@@ -21,10 +21,11 @@ export class PublicMediaQuery {
          left join media.media_variant v on v.media_asset_id=a.id
         where l.subject_type=$1 and l.subject_id=$2
           and a.status='ACTIVE' and a.rights_status='PERMITTED'
-          and not exists (
+          and exists (
             select 1 from media.media_rights mr
              where mr.media_asset_id=a.id and mr.is_current=true
-               and mr.expires_at is not null and mr.expires_at <= now()
+               and mr.status='PERMITTED'
+               and (mr.expires_at is null or mr.expires_at > now())
           )
         order by l.is_primary desc,l.sort_order,a.id,v.width`,
       [subjectType,subjectId],
@@ -35,13 +36,27 @@ export class PublicMediaQuery {
       if (!grouped.has(x.id)) grouped.set(x.id,{
         id:x.id,kind:x.kind,role:x.role,isPrimary:x.is_primary,
         alt:x.alt_text,attribution:x.attribution,
-        url:this.delivery.publicUrl(x.storage_key),variants:[],
+        storageKey:x.storage_key,variants:[],
       });
       if (x.variant_key) grouped.get(x.id).variants.push({
         key:x.variant_key,width:x.width,height:x.height,
-        url:this.delivery.publicUrl(x.variant_storage_key),
+        storageKey:x.variant_storage_key,
       });
     }
-    return {items:[...grouped.values()]};
+    const items=await Promise.all([...grouped.values()].map(async item=>{
+      const preferred=item.variants.find((variant:any)=>variant.key==='hero')
+        ?? item.variants.find((variant:any)=>variant.key==='card')
+        ?? item.variants.find((variant:any)=>variant.key==='thumb');
+      return {
+       id:item.id,kind:item.kind,role:item.role,isPrimary:item.isPrimary,
+       alt:item.alt,attribution:item.attribution,
+       url:await this.delivery.url(preferred?.storageKey??item.storageKey),
+       variants:await Promise.all(item.variants.map(async (variant:any)=>({
+        key:variant.key,width:variant.width,height:variant.height,
+        url:await this.delivery.url(variant.storageKey),
+       }))),
+      };
+    }));
+    return {items};
   }
 }

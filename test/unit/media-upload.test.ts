@@ -3,6 +3,7 @@ import {
   objectKey,UploadMediaHandler,
 } from '../../apps/api/src/media/upload-media.handler';
 import {readObjectStorageConfig} from '../../apps/api/src/media/s3-media-storage.adapter';
+import {createMediaDelivery} from '../../apps/api/src/media/s3-media-delivery.adapter';
 import {validateUpload} from '../../apps/api/src/media/upload-validator';
 
 describe('media upload boundaries',()=>{
@@ -51,5 +52,26 @@ describe('media upload boundaries',()=>{
    buffer:png,size:png.length,mimetype:'image/png',
   } as Express.Multer.File,'admin')).rejects.toThrow('database unavailable');
   expect(storage.delete).toHaveBeenCalledOnce();
+ });
+
+ it('creates a SigV4 URL and bounds its lifetime',async()=>{
+  const base={
+   OBJECT_STORAGE_BUCKET:'portal-media',
+   OBJECT_STORAGE_ENDPOINT:'http://127.0.0.1:9000',
+   OBJECT_STORAGE_ACCESS_KEY:'key',OBJECT_STORAGE_SECRET_KEY:'secret',
+  };
+  expect(()=>createMediaDelivery({
+   ...base,MEDIA_SIGNED_URL_TTL_SECONDS:'59',
+  })).toThrow('MEDIA_SIGNED_URL_TTL_SECONDS');
+  expect(()=>createMediaDelivery({
+   ...base,MEDIA_SIGNED_URL_TTL_SECONDS:'3601',
+  })).toThrow('MEDIA_SIGNED_URL_TTL_SECONDS');
+  const signed=await createMediaDelivery({
+   ...base,MEDIA_SIGNED_URL_TTL_SECONDS:'120',
+  }).url('variants/private/card.webp');
+  const url=new URL(signed);
+  expect(url.pathname).toBe('/portal-media/variants/private/card.webp');
+  expect(url.searchParams.get('X-Amz-Expires')).toBe('120');
+  expect(url.searchParams.get('X-Amz-Signature')).toMatch(/^[a-f0-9]{64}$/);
  });
 });

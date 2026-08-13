@@ -17,6 +17,6 @@ export interface MediaStoragePort {
 export const MEDIA_STORAGE=Symbol('MEDIA_STORAGE');
 
 export interface MediaDeliveryPort {
-  publicUrl(storageKey:string,variantKey?:string):string;
+  url(storageKey:string):Promise<string>;
 }
 export const MEDIA_DELIVERY=Symbol('MEDIA_DELIVERY');

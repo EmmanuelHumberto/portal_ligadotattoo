@@ -1,4 +1,4 @@
-import { Body,Controller,Get,Param,Post,Query } from '@nestjs/common';
+import {Body,Controller,Get,Header,Param,Post,Query} from '@nestjs/common';
 import { Actor } from '../iam/actor.decorator';
 import { Public } from '../iam/public.decorator';
 import { RequireCapability } from '../iam/require-capability.decorator';
@@ -34,6 +34,7 @@ export class MediaLibraryController {
 
   @Get('public/media/:subjectType/:subjectId')
   @Public()
+  @Header('Cache-Control','private, no-store')
   subject(
     @Param('subjectType') subjectType:string,
     @Param('subjectId') subjectId:string,

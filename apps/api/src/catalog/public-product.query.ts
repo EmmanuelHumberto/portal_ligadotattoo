@@ -1,10 +1,14 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { Pool } from 'pg';
 import { PG_POOL } from '../platform/database.module';
+import {MEDIA_DELIVERY,type MediaDeliveryPort} from '../media/media-storage.port';
 
 @Injectable()
 export class PublicProductQuery {
-  constructor(@Inject(PG_POOL) private readonly pool: Pool) {}
+  constructor(
+    @Inject(PG_POOL) private readonly pool: Pool,
+    @Inject(MEDIA_DELIVERY) private readonly delivery:MediaDeliveryPort,
+  ) {}
 
   async list(input: {
     limit: number;
@@ -80,13 +84,27 @@ export class PublicProductQuery {
         [row.id],
       ),
       this.pool.query(
-        `select a.id,a.kind,a.public_url,a.alt_text,a.attribution
+        `select a.id,a.kind,a.storage_key,a.alt_text,a.attribution,
+                coalesce(vh.storage_key,vc.storage_key,vt.storage_key,a.storage_key)
+                  delivery_storage_key
            from media.media_link l
            join media.media_asset a on a.id=l.media_asset_id
+           left join media.media_variant vh
+             on vh.media_asset_id=a.id and vh.variant_key='hero'
+           left join media.media_variant vc
+             on vc.media_asset_id=a.id and vc.variant_key='card'
+           left join media.media_variant vt
+             on vt.media_asset_id=a.id and vt.variant_key='thumb'
           where l.subject_type='PRODUCT_MODEL'
             and l.subject_id=$1
             and a.status='ACTIVE'
             and a.rights_status='PERMITTED'
+            and exists (
+              select 1 from media.media_rights mr
+               where mr.media_asset_id=a.id and mr.is_current=true
+                 and mr.status='PERMITTED'
+                 and (mr.expires_at is null or mr.expires_at > now())
+            )
           order by l.is_primary desc,l.sort_order,a.id`,
         [row.id],
       ),
@@ -102,6 +120,10 @@ export class PublicProductQuery {
       ),
     ]);
 
+    const deliveredMedia=await Promise.all(media.rows.map(async m=>({
+      id:m.id,kind:m.kind,url:await this.delivery.url(m.delivery_storage_key),
+      alt:m.alt_text,attribution:m.attribution,
+    })));
     return {
       ...mapSummary(row),
       machineType: row.product_type_key,
@@ -118,14 +140,11 @@ export class PublicProductQuery {
         label: humanize(f.property_key),
         value: formatFact(f.value, f.unit),
       })),
-      media: media.rows.map(m => ({
-        id:m.id, kind:m.kind, url:m.public_url,
-        alt:m.alt_text, attribution:m.attribution,
-      })),
-      heroMedia: media.rows[0] ? {
-        url: media.rows[0].public_url,
-        kind: media.rows[0].kind,
-        attribution: media.rows[0].attribution,
+      media:deliveredMedia,
+      heroMedia:deliveredMedia[0] ? {
+        url:deliveredMedia[0].url,
+        kind:deliveredMedia[0].kind,
+        attribution:deliveredMedia[0].attribution,
       } : null,
       offersSummary: offer.rows[0]?.amount == null ? null : {
         fromAmount: Number(offer.rows[0].amount),

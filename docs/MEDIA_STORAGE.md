@@ -56,3 +56,23 @@ ampliação artificial:
 Orientação EXIF é aplicada e metadados do original não são copiados. As chaves
 derivadas são determinísticas, portanto retries sobrescrevem os mesmos objetos.
 O decoder rejeita originais acima de 25 MiB ou 40 milhões de pixels.
+
+## Entrega privada
+
+Os DTOs públicos não usam `media_asset.public_url` nem expõem chaves do bucket.
+Depois de confirmar `ACTIVE`, `rights_status='PERMITTED'` e um registro atual de
+direitos `PERMITTED` com `expires_at` válido, a API gera URLs S3 assinadas com
+duração curta. O padrão é 300 segundos:
+
+```dotenv
+MEDIA_SIGNED_URL_TTL_SECONDS=300
+```
+
+O intervalo permitido é de 60 a 3600 segundos. Respostas que contêm URLs
+assinadas usam `Cache-Control: private, no-store`. A URL é uma credencial
+temporária e não deve ser registrada em logs, analytics ou mensagens de erro.
+O frontend também busca detalhes de produto com `cache: no-store` e não usa URL
+assinada em metadados sociais.
+Após expiração ou revogação de direitos, a API cessa imediatamente a emissão de
+novas URLs; uma URL já emitida pode permanecer válida até o fim do TTL. Revogar
+as credenciais que assinam as URLs pode invalidá-las antes desse prazo.
