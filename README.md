@@ -32,6 +32,10 @@ npm run bootstrap
 npm run dev
 ```
 
+Para carregar o catálogo sintético local, execute o bootstrap com
+`BOOTSTRAP_FIXTURES=true`. As instruções e os testes de navegador estão em
+[docs/E2E_TESTING.md](docs/E2E_TESTING.md).
+
 Se a porta `5432` estiver ocupada, defina `POSTGRES_PORT` e ajuste a porta em
 `DATABASE_URL` antes de iniciar o Compose.
 

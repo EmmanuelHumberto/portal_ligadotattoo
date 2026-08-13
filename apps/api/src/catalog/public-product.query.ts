@@ -62,7 +62,14 @@ export class PublicProductQuery {
     const base = await this.pool.query(
       `select p.id,p.slug,p.name,p.product_type_key,p.lifecycle,
               m.name manufacturer_name,m.slug manufacturer_slug,
-              b.name brand_name
+              b.name brand_name,
+              exists(
+                select 1 from knowledge.claim c
+                 where c.subject_type='PRODUCT_MODEL'
+                   and c.subject_id=p.id
+                   and c.claimant_type='SYNTHETIC_FIXTURE'
+                   and c.status='ACTIVE'
+              ) is_synthetic_fixture
          from catalog.product_model p
          join catalog.manufacturer m on m.id=p.manufacturer_id
          left join catalog.brand b on b.id=p.brand_id
@@ -151,6 +158,7 @@ export class PublicProductQuery {
         currency: offer.rows[0].currency,
         observedAt: offer.rows[0].observed_at,
       },
+      isSyntheticFixture:Boolean(row.is_synthetic_fixture),
     };
   }
 

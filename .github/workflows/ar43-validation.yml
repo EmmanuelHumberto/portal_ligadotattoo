@@ -50,4 +50,11 @@ jobs:
         done
         curl -fsS http://127.0.0.1:9000/minio/health/live
     - run: npm run db:migrate
+    - name: Seed synthetic E2E fixtures
+      run: npm run bootstrap
+      env:
+        BOOTSTRAP_FIXTURES: "true"
     - run: npm run verify:full
+    - name: Install Chromium
+      run: npx playwright install --with-deps chromium
+    - run: npm run test:e2e

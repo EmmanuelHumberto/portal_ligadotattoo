@@ -21,6 +21,8 @@ Data: 2026-08-12
 - variantes WebP geradas pelo Worker com roteamento idempotente de jobs;
 - entrega S3 privada assinada e interrupção de emissão após expiração de direitos;
 - scheduler PostgreSQL idempotente e métricas operacionais por tipo de job;
+- fixtures sintéticas idempotentes bloqueadas em produção;
+- jornadas Playwright de catálogo, filtro, detalhe, oferta e comparação validadas;
 - `npm run verify:full` aprovado.
 
 ## Cobertura automatizada atual
@@ -33,6 +35,8 @@ Data: 2026-08-12
 - upload, validação, compensação, URL assinada e integração MinIO: 7 testes;
 - geração Sharp, configuração, chaves de retry e variantes S3: 4 testes;
 - scheduler, frequências, deduplicação, polling, retenção e publicação atômica: 6 testes;
+- política de ativação das fixtures sintéticas: 3 testes;
+- Playwright público e proteção administrativa anônima: 5 testes executados;
 - typecheck de API, Web e Worker;
 - lint TypeScript/Next.js;
 - builds de produção de API, Web e Worker;
@@ -45,8 +49,7 @@ Data: 2026-08-12
 - provisionar o issuer, cliente e capacidades no provedor OIDC de staging;
 - definir alertas operacionais no ambiente de staging;
 - decidir entre URLs S3 assinadas e CDN privada no ambiente de staging;
-- preparar dados/seeds representativos para o catálogo;
-- executar Playwright E2E com fixtures e sessão administrativa;
+- executar os cenários Playwright privilegiados com sessão OIDC administrativa;
 - executar testes de carga, segurança e rollback do AR38/AR44;
 - produzir imagens imutáveis e evidências do ambiente de staging.
 

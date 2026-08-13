@@ -18,10 +18,10 @@ export function MachineFilters({facets}:{facets:any}){
 
  return <aside className="card filters">
   <h2>Refinar máquinas</h2>
-  <Select label="Marca" value={draft.brand??''}
-   values={facets.brands??[]} onChange={(v:string)=>set('brand',v)}/>
-  <Select label="Tipo" value={draft.type??''}
-   values={facets.types??[]} onChange={(v:string)=>set('type',v)}/>
+  <Select label="Marca" value={draft.manufacturer??''}
+   values={facets.brands??[]} onChange={(v:string)=>set('manufacturer',v)}/>
+  <Select label="Tipo" value={draft.productType??''}
+   values={facets.types??[]} onChange={(v:string)=>set('productType',v)}/>
   <Select label="Aplicação" value={draft.application??''}
    values={facets.applications??[]} onChange={(v:string)=>set('application',v)}/>
   <Select label="Faixa de preço" value={draft.price??''}
