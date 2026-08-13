@@ -48,3 +48,5 @@ Consulte [docs/INTEGRATION_VALIDATION.md](docs/INTEGRATION_VALIDATION.md) para o
 estado validado e as pendências conhecidas. Para proteger as rotas
 administrativas, consulte [docs/OIDC_CONFIGURATION.md](docs/OIDC_CONFIGURATION.md).
 O fluxo de mídia está em [docs/MEDIA_STORAGE.md](docs/MEDIA_STORAGE.md).
+O agendamento do Worker está em
+[docs/WORKER_SCHEDULER.md](docs/WORKER_SCHEDULER.md).

@@ -36,6 +36,14 @@ export class ReadinessService {
       pendingOlderThan15m:outbox,
     });
 
+    const deadJobs=await this.safeCount(
+      `select count(*)::int count from ops.job
+        where status='DEAD' and completed_at>=now()-interval '1 hour'`,
+    );
+    checks.push({
+      name:'dead_jobs',status:deadJobs>0?'DEGRADED':'UP',lastHour:deadJobs,
+    });
+
     const status=checks.some(x=>x.status==='DOWN')?'DOWN':
       checks.some(x=>x.status==='DEGRADED')?'DEGRADED':'UP';
     return {status,checks,checkedAt:new Date().toISOString()};

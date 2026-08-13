@@ -49,8 +49,16 @@ export class OperationsQuery {
   }
 
   async dashboard() {
-    const [jobs,outbox,dead,ai,ingestion,media]=await Promise.all([
+    const [jobs,jobTypes,outbox,dead,ai,ingestion,media,schedule]=await Promise.all([
       this.pool.query(`select status,count(*)::int count from ops.job group by status`),
+      this.pool.query(
+        `select job_type,status,count(*)::int count,
+                coalesce(max(extract(epoch from (now()-created_at))),0)::int
+                  oldest_age_seconds
+           from ops.job
+          where created_at>=now()-interval '24 hours'
+          group by job_type,status order by job_type,status`,
+      ),
       this.pool.query(`select status,count(*)::int count from ops.outbox_event group by status`),
       this.pool.query(`select status,count(*)::int count from ops.dead_letter group by status`),
       this.pool.query(
@@ -67,10 +75,22 @@ export class OperationsQuery {
         `select rights_status,count(*)::int count from media.media_asset
           group by rights_status`,
       ),
+      this.pool.query(
+        `select
+          count(*) filter(where c.status='SCHEDULED' and c.scheduled_at<=now())::int
+            editorial_due,
+          (select count(*)::int from ingestion.crawl_target t
+            join ingestion.source s on s.id=t.source_id
+           where t.status='ACTIVE' and s.status='ACTIVE'
+             and t.schedule_key in ('5m','15m','1h','6h','24h')) crawl_targets_enabled
+         from editorial.content c`,
+      ),
     ]);
     return {
-      jobs:jobs.rows,outbox:outbox.rows,deadLetters:dead.rows,
+      jobs:jobs.rows,jobsByType24h:jobTypes.rows,
+      outbox:outbox.rows,deadLetters:dead.rows,
       ai24h:ai.rows,ingestion24h:ingestion.rows,mediaRights:media.rows,
+      scheduler:schedule.rows[0],
       generatedAt:new Date().toISOString(),
     };
   }

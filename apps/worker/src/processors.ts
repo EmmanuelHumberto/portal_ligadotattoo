@@ -1,4 +1,7 @@
 import {Pool} from 'pg';
+import {
+ DurableScheduler,workerRetentionDays,workerSchedulerIntervalMs,
+} from './durable-scheduler';
 import {ListingCandidateHandler} from './commerce/ingestion-listing-candidate.handler';
 import {PriceTrendProjectionHandler} from './commerce/price-trend.handler';
 import {ListingStalenessHandler} from './commerce/staleness.handler';
@@ -53,8 +56,16 @@ export function createRuntimeProcessors(
  ];
  const runner=new JobRunner(pool,new Map(handlers.map(handler=>[handler.type,handler])));
  const outbox=new OutboxDispatcher(pool,new DatabaseEventRouter(pool));
+ const scheduler=new DurableScheduler(pool,workerRetentionDays(env.WORKER_JOB_RETENTION_DAYS));
+ const schedulerIntervalMs=workerSchedulerIntervalMs(env.WORKER_SCHEDULER_INTERVAL_MS);
+ let nextSchedulerAt=0;
 
  return [
+  {key:'scheduler',async tick(){
+   if(Date.now()<nextSchedulerAt)return;
+   await scheduler.enqueueDue();
+   nextSchedulerAt=Date.now()+schedulerIntervalMs;
+  }},
   {key:'outbox',async tick(){await outbox.dispatchBatch(50);}},
   {key:'jobs',async tick(){
    await runner.recoverExpiredLeases();

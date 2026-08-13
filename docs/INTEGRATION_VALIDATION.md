@@ -6,7 +6,7 @@ Data: 2026-08-12
 
 - pacotes AR17–AR45 consolidados em um único monorepo;
 - lockfile npm gerado;
-- cadeia canônica de 14 migrations reconciliada;
+- cadeia canônica de 15 migrations reconciliada;
 - migrations aplicadas com sucesso em PostgreSQL 16 limpo;
 - bootstrap aplicado com sucesso;
 - API iniciada com todos os módulos NestJS registrados;
@@ -20,6 +20,7 @@ Data: 2026-08-12
 - upload S3/MinIO validado com SHA-256 e persistência PostgreSQL consistente;
 - variantes WebP geradas pelo Worker com roteamento idempotente de jobs;
 - entrega S3 privada assinada e interrupção de emissão após expiração de direitos;
+- scheduler PostgreSQL idempotente e métricas operacionais por tipo de job;
 - `npm run verify:full` aprovado.
 
 ## Cobertura automatizada atual
@@ -31,6 +32,7 @@ Data: 2026-08-12
 - OIDC/JWKS, issuer, audience, expiração e claims: 7 testes;
 - upload, validação, compensação, URL assinada e integração MinIO: 7 testes;
 - geração Sharp, configuração, chaves de retry e variantes S3: 4 testes;
+- scheduler, frequências, deduplicação, polling, retenção e publicação atômica: 6 testes;
 - typecheck de API, Web e Worker;
 - lint TypeScript/Next.js;
 - builds de produção de API, Web e Worker;
@@ -41,7 +43,7 @@ Data: 2026-08-12
 ## Ainda pendente para staging
 
 - provisionar o issuer, cliente e capacidades no provedor OIDC de staging;
-- conectar scheduler e métricas operacionais do Worker ao ambiente de staging;
+- definir alertas operacionais no ambiente de staging;
 - decidir entre URLs S3 assinadas e CDN privada no ambiente de staging;
 - preparar dados/seeds representativos para o catálogo;
 - executar Playwright E2E com fixtures e sessão administrativa;
