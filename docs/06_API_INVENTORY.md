@@ -11,6 +11,7 @@ Representative public boundaries:
 - GET /public/search/suggest
 - GET /public/editorial
 - GET /public/editorial/:slug
+- GET /public/offers
 - GET /go/listing/:id
 - POST /analytics/events
 - health/readiness endpoints

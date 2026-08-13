@@ -2,7 +2,7 @@
   "name": "@portal/api",
   "private": true,
   "scripts": {
-    "dev": "tsx watch src/main.ts",
+    "dev": "sh ../../scripts/dev-typescript.sh",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/main.js",
     "typecheck": "tsc --noEmit",

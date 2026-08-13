@@ -77,6 +77,16 @@ for(const journey of [
  await expect(page.getByText(/conteúdo é sintético/i)).toBeVisible();
 });
 
+test('fresh offer feed keeps outbound links behind the redirect boundary',async({page})=>{
+ await page.goto('/ofertas');
+ await expect(page.getByRole('heading',{name:/ofertas recentes/i})).toBeVisible();
+ const offer=page.locator('article').first();
+ await expect(offer.getByText(/fixture supply/i)).toBeVisible();
+ await expect(offer.getByText(/r\$\s*1[.,]299,90/i)).toBeVisible();
+ await expect(offer.getByRole('link',{name:/ir para a loja/i}))
+  .toHaveAttribute('href',/\/go\/listing\//);
+});
+
 test('robots and sitemap are public',async({request})=>{
  expect((await request.get('/robots.txt')).ok()).toBeTruthy();
  expect((await request.get('/sitemap.xml')).ok()).toBeTruthy();

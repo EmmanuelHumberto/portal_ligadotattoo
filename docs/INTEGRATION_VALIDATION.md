@@ -11,7 +11,7 @@ Data: 2026-08-13
 - bootstrap aplicado com sucesso;
 - API iniciada com todos os módulos NestJS registrados;
 - health, catálogo, fabricantes, busca e editorial público verificados;
-- frontend iniciado e testado em Home, máquinas, marcas, busca, notícias, blog e eventos;
+- frontend iniciado e testado em Home, máquinas, marcas, busca, notícias, blog, eventos e ofertas;
 - rotas administrativas rejeitam acesso anônimo com HTTP 401;
 - Worker executando outbox e jobs PostgreSQL com retry, lease recovery e dead letter;
 - roteamento idempotente validado de evento de catálogo até a projeção de busca;
@@ -41,8 +41,8 @@ Data: 2026-08-13
 - geração Sharp, configuração, chaves de retry e variantes S3: 4 testes;
 - scheduler, frequências, deduplicação, polling, retenção e publicação atômica: 6 testes;
 - política de ativação das fixtures sintéticas: 3 testes;
-- Playwright público e proteção administrativa anônima: 11 testes executados;
-- descoberta pública, sugestões, fabricantes e detalhes de eventos: 3 testes;
+- Playwright público e proteção administrativa anônima: 12 testes executados;
+- descoberta pública, sugestões, fabricantes, eventos e ofertas: 4 testes;
 - rate limiting, classificação de rotas e headers defensivos: 4 testes;
 - política SSRF, IPs reservados, DNS misto, deadlines e redirects: 31 testes;
 - readiness, timeouts, lifecycle e tratamento de falhas do pool: 10 testes;
@@ -63,7 +63,6 @@ Data: 2026-08-13
 - executar os cenários Playwright privilegiados com sessão OIDC administrativa;
 - executar testes de carga, segurança e rollback do AR38/AR44;
 - produzir imagens imutáveis e evidências do ambiente de staging;
-- implementar a página pública agregada de ofertas;
 - completar as áreas administrativas além do dashboard operacional inicial.
 
 Este resultado promove o projeto de “formulação completa” para “baseline local

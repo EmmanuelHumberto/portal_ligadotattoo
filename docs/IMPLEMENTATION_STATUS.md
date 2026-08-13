@@ -8,7 +8,7 @@ Atualizado em 2026-08-13.
 |---|---|---|
 | Formulação AR-01–AR-45 | Completa | 45 de 45 artefatos planejados |
 | Plataforma integrada | Em andamento, núcleo local aprovado | Web, API, Worker, PostgreSQL, MinIO, migrations e gates automatizados |
-| Experiência pública | Baseline ampla | Home, busca, catálogo, produto, comparação, marcas, notícias, blog e eventos funcionais |
+| Experiência pública | Baseline ampla | Home, busca, catálogo, produto, comparação, marcas, notícias, blog, eventos e ofertas funcionais |
 | Administração | Parcial | Dashboard inicial e APIs protegidas; demais workspaces ainda não estão completos |
 | Staging | Pendente | Depende de infraestrutura, OIDC, imagens imutáveis e execução do candidato |
 | Produção | Pendente/NO-GO por ausência de evidência | Não há autorização de lançamento registrada |
@@ -28,7 +28,7 @@ Atualizado em 2026-08-13.
 
 ## Próximos blocos de implementação
 
-1. Implementar a superfície pública agregada de ofertas e enriquecer o conteúdo real.
+1. Enriquecer conteúdo, mídia e dados reais das superfícies públicas.
 2. Expandir o Admin para catálogo, knowledge, mídia, ingestão, editorial, IA e auditoria.
 3. Executar Playwright privilegiado com OIDC real em staging.
 4. Automatizar imagens imutáveis, scans, carga, rollback e pacote de evidências.

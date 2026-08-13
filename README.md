@@ -28,12 +28,17 @@ docker compose -f infra/compose.yml up -d
 npm ci
 set -a && . ./.env && set +a
 npm run db:migrate
-npm run bootstrap
+BOOTSTRAP_FIXTURES=true npm run bootstrap
 npm run dev
 ```
 
-Para carregar o catálogo sintético local, execute o bootstrap com
-`BOOTSTRAP_FIXTURES=true`. As instruções e os testes de navegador estão em
+Abra `http://localhost:3000`. O comando raiz inicia Web, API e Worker juntos;
+`Ctrl+C` encerra os três processos. MinIO fica em `http://localhost:9001`.
+A API usa o compilador TypeScript incremental para preservar os metadados de
+injeção do NestJS durante o hot reload.
+
+Para iniciar sem dados sintéticos, execute `npm run bootstrap` sem a variável.
+As instruções e os testes de navegador estão em
 [docs/E2E_TESTING.md](docs/E2E_TESTING.md).
 
 Se a porta `5432` estiver ocupada, defina `POSTGRES_PORT` e ajuste a porta em
