@@ -1,0 +1,17 @@
+flowchart LR
+  U[Public / Operators] --> W[Web]
+  W --> A[API]
+  A --> DB[(PostgreSQL)]
+  A --> M[Media/CDN]
+  A --> C[Commerce]
+  WK[Worker] --> DB
+  WK --> S[External Sources]
+  WK --> H[AI Provider Hub]
+  H --> O[OpenAI]
+  H --> AN[Anthropic]
+  H --> D[DeepSeek]
+  S --> E[Evidence]
+  E --> R[Review / Governance]
+  R --> DB
+  DB --> P[Public Projections]
+  P --> A

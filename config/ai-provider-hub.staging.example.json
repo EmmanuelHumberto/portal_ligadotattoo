@@ -1,0 +1,40 @@
+{
+  "providers": {
+    "openai": {
+      "enabled": true,
+      "credentialRef": "OPENAI_API_KEY"
+    },
+    "anthropic": {
+      "enabled": true,
+      "credentialRef": "ANTHROPIC_API_KEY"
+    },
+    "deepseek": {
+      "enabled": true,
+      "credentialRef": "DEEPSEEK_API_KEY"
+    }
+  },
+  "workloads": {
+    "catalog_enrichment": {
+      "primary": "openai",
+      "fallback": [
+        "anthropic",
+        "deepseek"
+      ]
+    },
+    "editorial_assist": {
+      "primary": "anthropic",
+      "fallback": [
+        "openai",
+        "deepseek"
+      ]
+    },
+    "source_normalization": {
+      "primary": "deepseek",
+      "fallback": [
+        "openai",
+        "anthropic"
+      ]
+    }
+  },
+  "authorityPolicy": "AI_OUTPUT_REQUIRES_GOVERNANCE"
+}

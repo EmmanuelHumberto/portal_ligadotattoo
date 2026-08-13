@@ -1,0 +1,938 @@
+openapi: 3.1.0
+info:
+  title: Portal Tattoo API
+  version: 1.0.0
+  description: Public and administrative HTTP contract for Portal Tattoo.
+servers:
+  - url: /api/v1
+tags:
+  - name: Public Catalog
+  - name: Public Search
+  - name: Public Editorial
+  - name: Public Commerce
+  - name: Admin Catalog
+  - name: Admin Knowledge
+  - name: Admin Media
+  - name: Admin Sources
+  - name: Admin Ingestion
+  - name: Admin Editorial
+  - name: Admin Commerce
+  - name: Admin AI
+security: []
+paths:
+  /public/products:
+    get:
+      tags: [Public Catalog]
+      operationId: listPublicProducts
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+        - name: productType
+          in: query
+          schema: {type: string}
+        - name: manufacturer
+          in: query
+          schema: {type: string}
+      responses:
+        '200':
+          description: Product page
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PublicProductPage'}
+  /public/products/{slug}:
+    get:
+      tags: [Public Catalog]
+      operationId: getPublicProduct
+      parameters:
+        - $ref: '#/components/parameters/Slug'
+      responses:
+        '200':
+          description: Public product
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PublicProduct'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /public/search:
+    get:
+      tags: [Public Search]
+      operationId: searchPublic
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema: {type: string, minLength: 1, maxLength: 200}
+        - name: productType
+          in: query
+          schema: {type: string}
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/SearchResultPage'}
+  /public/search/suggest:
+    get:
+      tags: [Public Search]
+      operationId: suggestPublicSearch
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema: {type: string, minLength: 1, maxLength: 100}
+      responses:
+        '200':
+          description: Suggestions
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: {type: string}
+  /public/editorial:
+    get:
+      tags: [Public Editorial]
+      operationId: listPublishedEditorial
+      parameters:
+        - name: type
+          in: query
+          schema:
+            $ref: '#/components/schemas/EditorialType'
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Published editorial feed
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/EditorialPage'}
+  /public/editorial/{slug}:
+    get:
+      tags: [Public Editorial]
+      operationId: getPublishedEditorial
+      parameters:
+        - $ref: '#/components/parameters/Slug'
+      responses:
+        '200':
+          description: Published content
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PublicEditorialContent'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /public/products/{slug}/offers:
+    get:
+      tags: [Public Commerce]
+      operationId: getProductOffers
+      parameters:
+        - $ref: '#/components/parameters/Slug'
+      responses:
+        '200':
+          description: Current offers
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: {$ref: '#/components/schemas/PublicOffer'}
+  /public/products/{slug}/price-history:
+    get:
+      tags: [Public Commerce]
+      operationId: getProductPriceHistory
+      parameters:
+        - $ref: '#/components/parameters/Slug'
+        - name: window
+          in: query
+          schema: {type: string, enum: [30d, 90d, 180d, 1y, all], default: 90d}
+      responses:
+        '200':
+          description: Price history
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PriceHistory'}
+
+  /admin/me:
+    get:
+      tags: [Admin Catalog]
+      security: [{oidc: []}]
+      operationId: getAdminMe
+      responses:
+        '200':
+          description: Current actor
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AdminActor'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+  /admin/manufacturers:
+    get:
+      tags: [Admin Catalog]
+      security: [{oidc: []}]
+      operationId: listManufacturers
+      x-required-capability: catalog.read
+      responses:
+        '200':
+          description: Manufacturers
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '#/components/schemas/Manufacturer'}
+    post:
+      tags: [Admin Catalog]
+      security: [{oidc: []}]
+      operationId: createManufacturer
+      x-required-capability: catalog.write
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CreateManufacturerRequest'}
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Manufacturer'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '422': {$ref: '#/components/responses/Validation'}
+  /admin/products:
+    get:
+      tags: [Admin Catalog]
+      security: [{oidc: []}]
+      operationId: listAdminProducts
+      x-required-capability: catalog.read
+      responses:
+        '200':
+          description: Products
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '#/components/schemas/AdminProductSummary'}
+    post:
+      tags: [Admin Catalog]
+      security: [{oidc: []}]
+      operationId: createProduct
+      x-required-capability: catalog.write
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CreateProductRequest'}
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AdminProduct'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '422': {$ref: '#/components/responses/Validation'}
+  /admin/products/{id}:
+    get:
+      tags: [Admin Catalog]
+      security: [{oidc: []}]
+      operationId: getAdminProduct
+      x-required-capability: catalog.read
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Product
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AdminProduct'}
+        '404': {$ref: '#/components/responses/NotFound'}
+    patch:
+      tags: [Admin Catalog]
+      security: [{oidc: []}]
+      operationId: updateAdminProduct
+      x-required-capability: catalog.write
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/UpdateProductRequest'}
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AdminProduct'}
+        '409': {$ref: '#/components/responses/ConcurrentModification'}
+        '422': {$ref: '#/components/responses/Validation'}
+
+  /admin/claims:
+    post:
+      tags: [Admin Knowledge]
+      security: [{oidc: []}]
+      operationId: recordClaim
+      x-required-capability: claim.write
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/RecordClaimRequest'}
+      responses:
+        '201':
+          description: Claim recorded
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Claim'}
+        '422': {$ref: '#/components/responses/Validation'}
+  /admin/canonical-proposals:
+    post:
+      tags: [Admin Knowledge]
+      security: [{oidc: []}]
+      operationId: createCanonicalProposal
+      x-required-capability: canonical.propose
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CreateCanonicalProposalRequest'}
+      responses:
+        '201':
+          description: Proposal created
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/CanonicalProposal'}
+  /admin/canonical-proposals/{id}/decision:
+    post:
+      tags: [Admin Knowledge]
+      security: [{oidc: []}]
+      operationId: decideCanonicalProposal
+      x-required-capability: canonical.decide
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CanonicalDecisionRequest'}
+      responses:
+        '200':
+          description: Decision applied
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/CanonicalDecisionResult'}
+        '409': {$ref: '#/components/responses/ConcurrentModification'}
+        '422': {$ref: '#/components/responses/Validation'}
+
+  /admin/media:
+    post:
+      tags: [Admin Media]
+      security: [{oidc: []}]
+      operationId: registerMedia
+      x-required-capability: media.review
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/RegisterMediaRequest'}
+      responses:
+        '201':
+          description: Media registered
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/MediaAsset'}
+  /admin/media/{id}/rights:
+    post:
+      tags: [Admin Media]
+      security: [{oidc: []}]
+      operationId: setMediaRights
+      x-required-capability: media.review
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [rightsStatus, reason]
+              properties:
+                rightsStatus: {$ref: '#/components/schemas/MediaRightsStatus'}
+                reason: {type: string, minLength: 3}
+      responses:
+        '200': {description: Rights status updated}
+        '409': {$ref: '#/components/responses/ConcurrentModification'}
+
+  /admin/sources:
+    post:
+      tags: [Admin Sources]
+      security: [{oidc: []}]
+      operationId: registerSource
+      x-required-capability: source.manage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/RegisterSourceRequest'}
+      responses:
+        '201':
+          description: Source registered
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Source'}
+  /admin/ingestion/acquisitions:
+    post:
+      tags: [Admin Ingestion]
+      security: [{oidc: []}]
+      operationId: triggerAcquisition
+      x-required-capability: ingestion.operate
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [crawlTargetId]
+              properties:
+                crawlTargetId: {$ref: '#/components/schemas/Uuid'}
+      responses:
+        '202':
+          description: Acquisition scheduled
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AcceptedJob'}
+
+  /admin/editorial:
+    post:
+      tags: [Admin Editorial]
+      security: [{oidc: []}]
+      operationId: createEditorialDraft
+      x-required-capability: editorial.write
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CreateEditorialRequest'}
+      responses:
+        '201':
+          description: Draft created
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AdminEditorialContent'}
+  /admin/editorial/{id}/publish:
+    post:
+      tags: [Admin Editorial]
+      security: [{oidc: []}]
+      operationId: publishEditorial
+      x-required-capability: editorial.publish
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '200':
+          description: Published
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AdminEditorialContent'}
+        '409': {$ref: '#/components/responses/ConcurrentModification'}
+
+  /admin/listings/{id}/prices:
+    post:
+      tags: [Admin Commerce]
+      security: [{oidc: []}]
+      operationId: recordPriceObservation
+      x-required-capability: commerce.manage
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/RecordPriceRequest'}
+      responses:
+        '201':
+          description: Price observation appended
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PriceObservation'}
+
+  /admin/ai/providers:
+    get:
+      tags: [Admin AI]
+      security: [{oidc: []}]
+      operationId: listAIProviders
+      x-required-capability: ai.configure
+      responses:
+        '200':
+          description: Configured providers without secrets
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '#/components/schemas/AIProvider'}
+  /admin/ai/routing-policies:
+    post:
+      tags: [Admin AI]
+      security: [{oidc: []}]
+      operationId: createAIRoutingPolicy
+      x-required-capability: ai.configure
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CreateAIRoutingPolicyRequest'}
+      responses:
+        '201':
+          description: Routing policy created
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AIRoutingPolicy'}
+
+components:
+  securitySchemes:
+    oidc:
+      type: openIdConnect
+      openIdConnectUrl: https://identity.example.invalid/.well-known/openid-configuration
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema: {$ref: '#/components/schemas/Uuid'}
+    Slug:
+      name: slug
+      in: path
+      required: true
+      schema: {type: string, pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$'}
+    Cursor:
+      name: cursor
+      in: query
+      schema: {type: string}
+    Limit:
+      name: limit
+      in: query
+      schema: {type: integer, minimum: 1, maximum: 100, default: 24}
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      schema: {type: string, minLength: 8, maxLength: 200}
+    IfMatch:
+      name: If-Match
+      in: header
+      required: true
+      description: Aggregate version, formatted as a quoted integer ETag.
+      schema: {type: string, pattern: '^"[0-9]+"$'}
+  responses:
+    Unauthorized:
+      description: Authentication required
+      content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}
+    NotFound:
+      description: Resource not found
+      content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}
+    Conflict:
+      description: Conflict
+      content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}
+    ConcurrentModification:
+      description: Aggregate changed since client read
+      content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}
+    Validation:
+      description: Validation failed
+      content: {application/problem+json: {schema: {$ref: '#/components/schemas/ValidationProblem'}}}
+  schemas:
+    Uuid:
+      type: string
+      format: uuid
+    Problem:
+      type: object
+      required: [type,title,status,code,correlationId]
+      properties:
+        type: {type: string}
+        title: {type: string}
+        status: {type: integer}
+        detail: {type: string}
+        code: {type: string}
+        correlationId: {$ref: '#/components/schemas/Uuid'}
+    ValidationProblem:
+      allOf:
+        - $ref: '#/components/schemas/Problem'
+        - type: object
+          properties:
+            errors:
+              type: array
+              items:
+                type: object
+                required: [field,code]
+                properties:
+                  field: {type: string}
+                  code: {type: string}
+                  message: {type: string}
+    PageMeta:
+      type: object
+      required: [hasMore]
+      properties:
+        nextCursor: {type: [string,'null']}
+        hasMore: {type: boolean}
+    Manufacturer:
+      type: object
+      required: [id,name,slug,status,version]
+      properties:
+        id: {$ref: '#/components/schemas/Uuid'}
+        name: {type: string}
+        slug: {type: string}
+        officialWebsite: {type: [string,'null'], format: uri}
+        countryCode: {type: [string,'null'], minLength: 2, maxLength: 2}
+        status: {type: string, enum: [ACTIVE,INACTIVE,UNKNOWN]}
+        version: {type: integer, minimum: 1}
+    CreateManufacturerRequest:
+      type: object
+      required: [name]
+      additionalProperties: false
+      properties:
+        name: {type: string, minLength: 1, maxLength: 200}
+        slug: {type: string}
+        officialWebsite: {type: string, format: uri}
+        countryCode: {type: string, minLength: 2, maxLength: 2}
+    CreateProductRequest:
+      type: object
+      required: [manufacturerId,productTypeKey,name]
+      additionalProperties: false
+      properties:
+        manufacturerId: {$ref: '#/components/schemas/Uuid'}
+        brandId: {$ref: '#/components/schemas/Uuid'}
+        productTypeKey: {type: string}
+        name: {type: string, minLength: 1}
+        slug: {type: string}
+        modelCode: {type: string}
+    UpdateProductRequest:
+      type: object
+      minProperties: 1
+      additionalProperties: false
+      properties:
+        name: {type: string}
+        brandId: {type: [string,'null'], format: uuid}
+        modelCode: {type: [string,'null']}
+        lifecycle: {type: string, enum: [ANNOUNCED,ACTIVE,DISCONTINUED,LEGACY,UNKNOWN]}
+    AdminProductSummary:
+      type: object
+      required: [id,name,slug,manufacturerName,lifecycle,version]
+      properties:
+        id: {$ref: '#/components/schemas/Uuid'}
+        name: {type: string}
+        slug: {type: string}
+        manufacturerName: {type: string}
+        lifecycle: {type: string}
+        version: {type: integer}
+    AdminProduct:
+      allOf:
+        - $ref: '#/components/schemas/AdminProductSummary'
+        - type: object
+          properties:
+            claimsSummary: {type: object, additionalProperties: true}
+            canonicalFacts: {type: array, items: {$ref: '#/components/schemas/CanonicalFact'}}
+            media: {type: array, items: {$ref: '#/components/schemas/MediaAsset'}}
+    PublicProduct:
+      type: object
+      required: [id,slug,name,manufacturer,productType,canonicalSpecifications]
+      properties:
+        id: {$ref: '#/components/schemas/Uuid'}
+        slug: {type: string}
+        name: {type: string}
+        manufacturer: {type: string}
+        brand: {type: [string,'null']}
+        productType: {type: string}
+        lifecycle: {type: string}
+        heroMedia: {$ref: '#/components/schemas/PublicMedia'}
+        canonicalSpecifications:
+          type: array
+          items: {$ref: '#/components/schemas/PublicSpecification'}
+        offersSummary: {type: object, additionalProperties: true}
+        priceHistorySummary: {type: object, additionalProperties: true}
+    PublicProductPage:
+      type: object
+      required: [items,meta]
+      properties:
+        items: {type: array, items: {$ref: '#/components/schemas/PublicProduct'}}
+        meta: {$ref: '#/components/schemas/PageMeta'}
+    PublicSpecification:
+      type: object
+      required: [key,name,value]
+      properties:
+        key: {type: string}
+        name: {type: string}
+        value: {}
+        unit: {type: [string,'null']}
+    PublicMedia:
+      type: object
+      required: [url,kind]
+      properties:
+        url: {type: string, format: uri}
+        kind: {type: string}
+        attribution: {type: [string,'null']}
+    SearchResultPage:
+      type: object
+      required: [items,meta]
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            required: [type,id,title,url]
+            properties:
+              type: {type: string}
+              id: {$ref: '#/components/schemas/Uuid'}
+              title: {type: string}
+              subtitle: {type: [string,'null']}
+              url: {type: string}
+        meta: {$ref: '#/components/schemas/PageMeta'}
+    RecordClaimRequest:
+      type: object
+      required: [subjectType,subjectId,propertyKey,value,claimantType]
+      additionalProperties: false
+      properties:
+        subjectType: {type: string}
+        subjectId: {$ref: '#/components/schemas/Uuid'}
+        propertyKey: {type: string}
+        value: {}
+        claimantType: {type: string}
+        claimantId: {type: string}
+        sourceSnapshotId: {$ref: '#/components/schemas/Uuid'}
+        sourceUrl: {type: string, format: uri}
+        observedAt: {type: string, format: date-time}
+        confidence: {type: number, minimum: 0, maximum: 1}
+    Claim:
+      type: object
+      required: [id,subjectType,subjectId,propertyKey,value,status,version]
+      properties:
+        id: {$ref: '#/components/schemas/Uuid'}
+        subjectType: {type: string}
+        subjectId: {$ref: '#/components/schemas/Uuid'}
+        propertyKey: {type: string}
+        value: {}
+        status: {type: string}
+        version: {type: integer}
+    CanonicalFact:
+      type: object
+      required: [id,propertyKey,value,validFrom,version]
+      properties:
+        id: {$ref: '#/components/schemas/Uuid'}
+        propertyKey: {type: string}
+        value: {}
+        validFrom: {type: string, format: date-time}
+        validTo: {type: [string,'null'], format: date-time}
+        version: {type: integer}
+    CreateCanonicalProposalRequest:
+      type: object
+      required: [subjectType,subjectId,propertyKey,proposedValue,evidenceIds]
+      properties:
+        subjectType: {type: string}
+        subjectId: {$ref: '#/components/schemas/Uuid'}
+        propertyKey: {type: string}
+        proposedValue: {}
+        evidenceIds:
+          type: array
+          minItems: 1
+          items: {$ref: '#/components/schemas/Uuid'}
+    CanonicalProposal:
+      type: object
+      required: [id,status,version]
+      properties:
+        id: {$ref: '#/components/schemas/Uuid'}
+        status: {type: string}
+        version: {type: integer}
+    CanonicalDecisionRequest:
+      type: object
+      required: [decision,reason,expectedVersion]
+      properties:
+        decision: {type: string, enum: [APPROVE,REJECT]}
+        reason: {type: string, minLength: 3}
+        expectedVersion: {type: integer, minimum: 1}
+    CanonicalDecisionResult:
+      type: object
+      required: [proposalId,decision]
+      properties:
+        proposalId: {$ref: '#/components/schemas/Uuid'}
+        decision: {type: string, enum: [APPROVE,REJECT]}
+        canonicalFact: {$ref: '#/components/schemas/CanonicalFact'}
+    MediaRightsStatus:
+      type: string
+      enum: [UNKNOWN,PENDING,PERMITTED,RESTRICTED,EXPIRED,TAKEDOWN]
+    RegisterMediaRequest:
+      type: object
+      required: [kind,storageKey,mimeType,byteSize,sha256]
+      properties:
+        kind: {type: string}
+        storageKey: {type: string}
+        mimeType: {type: string}
+        byteSize: {type: integer, minimum: 0}
+        sha256: {type: string}
+        sourceUrl: {type: string, format: uri}
+    MediaAsset:
+      type: object
+      required: [id,kind,mimeType,rightsStatus,status,version]
+      properties:
+        id: {$ref: '#/components/schemas/Uuid'}
+        kind: {type: string}
+        mimeType: {type: string}
+        rightsStatus: {$ref: '#/components/schemas/MediaRightsStatus'}
+        status: {type: string}
+        version: {type: integer}
+    RegisterSourceRequest:
+      type: object
+      required: [name,sourceType]
+      properties:
+        name: {type: string}
+        sourceType: {type: string}
+        baseUrl: {type: string, format: uri}
+    Source:
+      type: object
+      required: [id,name,lifecycle,complianceStatus,version]
+      properties:
+        id: {$ref: '#/components/schemas/Uuid'}
+        name: {type: string}
+        lifecycle: {type: string}
+        complianceStatus: {type: string}
+        version: {type: integer}
+    AcceptedJob:
+      type: object
+      required: [jobId,status]
+      properties:
+        jobId: {$ref: '#/components/schemas/Uuid'}
+        status: {type: string, enum: [PENDING]}
+    EditorialType:
+      type: string
+      enum: [NEWS,BLOG,EVENT,TECHNICAL_ARTICLE,NOTICE]
+    CreateEditorialRequest:
+      type: object
+      required: [contentType,title,body]
+      properties:
+        contentType: {$ref: '#/components/schemas/EditorialType'}
+        title: {type: string}
+        subtitle: {type: string}
+        summary: {type: string}
+        body: {type: object, additionalProperties: true}
+    AdminEditorialContent:
+      type: object
+      required: [id,contentType,slug,title,status,version]
+      properties:
+        id: {$ref: '#/components/schemas/Uuid'}
+        contentType: {$ref: '#/components/schemas/EditorialType'}
+        slug: {type: string}
+        title: {type: string}
+        status: {type: string}
+        version: {type: integer}
+    PublicEditorialContent:
+      type: object
+      required: [id,contentType,slug,title,body,publishedAt]
+      properties:
+        id: {$ref: '#/components/schemas/Uuid'}
+        contentType: {$ref: '#/components/schemas/EditorialType'}
+        slug: {type: string}
+        title: {type: string}
+        summary: {type: [string,'null']}
+        body: {type: object, additionalProperties: true}
+        publishedAt: {type: string, format: date-time}
+    EditorialPage:
+      type: object
+      required: [items,meta]
+      properties:
+        items: {type: array, items: {$ref: '#/components/schemas/PublicEditorialContent'}}
+        meta: {$ref: '#/components/schemas/PageMeta'}
+    RecordPriceRequest:
+      type: object
+      required: [amount,currency,observedAt]
+      properties:
+        amount: {type: number, minimum: 0}
+        currency: {type: string, minLength: 3, maxLength: 3}
+        availability: {type: string}
+        shippingAmount: {type: number, minimum: 0}
+        observedAt: {type: string, format: date-time}
+        snapshotId: {$ref: '#/components/schemas/Uuid'}
+    PriceObservation:
+      type: object
+      required: [id,amount,currency,observedAt]
+      properties:
+        id: {$ref: '#/components/schemas/Uuid'}
+        amount: {type: number}
+        currency: {type: string}
+        observedAt: {type: string, format: date-time}
+    PublicOffer:
+      type: object
+      required: [seller,amount,currency,url,observedAt]
+      properties:
+        seller: {type: string}
+        amount: {type: number}
+        currency: {type: string}
+        url: {type: string, format: uri}
+        availability: {type: [string,'null']}
+        observedAt: {type: string, format: date-time}
+    PriceHistory:
+      type: object
+      required: [currency,observations]
+      properties:
+        currency: {type: string}
+        changePercent: {type: [number,'null']}
+        observations:
+          type: array
+          items:
+            type: object
+            required: [amount,observedAt]
+            properties:
+              amount: {type: number}
+              observedAt: {type: string, format: date-time}
+    AdminActor:
+      type: object
+      required: [id,displayName,capabilities]
+      properties:
+        id: {$ref: '#/components/schemas/Uuid'}
+        displayName: {type: string}
+        capabilities: {type: array, items: {type: string}}
+    AIProvider:
+      type: object
+      required: [id,key,displayName,enabled,healthStatus]
+      properties:
+        id: {$ref: '#/components/schemas/Uuid'}
+        key: {type: string, enum: [openai,anthropic,deepseek]}
+        displayName: {type: string}
+        enabled: {type: boolean}
+        healthStatus: {type: string}
+        secretConfigured: {type: boolean}
+    CreateAIRoutingPolicyRequest:
+      type: object
+      required: [workloadKey,name,candidates]
+      properties:
+        workloadKey: {type: string}
+        name: {type: string}
+        candidates:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [providerKey,modelKey,priority]
+            properties:
+              providerKey: {type: string, enum: [openai,anthropic,deepseek]}
+              modelKey: {type: string}
+              priority: {type: integer, minimum: 1}
+    AIRoutingPolicy:
+      type: object
+      required: [id,workloadKey,name,enabled,version]
+      properties:
+        id: {$ref: '#/components/schemas/Uuid'}
+        workloadKey: {type: string}
+        name: {type: string}
+        enabled: {type: boolean}
+        version: {type: integer}

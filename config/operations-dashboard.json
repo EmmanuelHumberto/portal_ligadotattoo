@@ -1,0 +1,11 @@
+{
+  "sections": [
+    {"name":"Public Experience","metrics":["availability","http_error_rate","p95_latency","LCP","INP","CLS"]},
+    {"name":"Async Runtime","metrics":["job_oldest_pending","job_retry_rate","dead_letter_open","outbox_oldest_pending"]},
+    {"name":"Ingestion","metrics":["runs_success_rate","freshness_lag","source_failures"]},
+    {"name":"AI Hub","metrics":["provider_success_rate","provider_latency","fallback_rate","estimated_cost"]},
+    {"name":"Media","metrics":["rights_expired","takedown_events","cache_invalidation_lag"]},
+    {"name":"Commerce","metrics":["fresh_listing_ratio","redirect_error_rate"]},
+    {"name":"Security","metrics":["auth_failures","rate_limit_blocks","privileged_audit_events"]}
+  ]
+}

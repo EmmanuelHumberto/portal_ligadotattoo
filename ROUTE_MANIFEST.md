@@ -1,0 +1,43 @@
+# AR-20 Route Manifest
+
+## Public
+- `/`
+- `/buscar`
+- `/equipamentos`
+- `/equipamentos/maquinas`
+- `/equipamentos/baterias`
+- `/equipamentos/fontes`
+- `/equipamentos/cartuchos`
+- `/equipamentos/agulhas`
+- `/equipamentos/acessorios`
+- `/produto/[slug]`
+- `/noticias`
+- `/noticias/[slug]`
+- `/blog`
+- `/blog/[slug]`
+- `/eventos`
+- `/eventos/[slug]`
+- `/conhecimento`
+- `/fabricantes/[slug]`
+- `/sobre/metodologia`
+
+## Admin
+- `/admin/dashboard`
+- `/admin/produtos`
+- `/admin/knowledge/claims`
+- `/admin/knowledge/propostas`
+- `/admin/knowledge/conflitos`
+- `/admin/midia`
+- `/admin/fontes`
+- `/admin/ingestao`
+- `/admin/comercio`
+- `/admin/editorial`
+- `/admin/problemas-tecnicos`
+- `/admin/laboratorio`
+- `/admin/ia/provedores`
+- `/admin/ia/modelos`
+- `/admin/ia/workloads`
+- `/admin/ia/roteamento`
+- `/admin/ia/execucoes`
+- `/admin/operacoes`
+- `/admin/auditoria`

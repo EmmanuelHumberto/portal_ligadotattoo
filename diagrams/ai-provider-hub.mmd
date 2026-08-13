@@ -1,0 +1,12 @@
+flowchart TD
+  X[Workload] --> P[Workload Policy]
+  P --> H[AI Provider Hub]
+  H --> OA[OpenAI Adapter]
+  H --> AA[Anthropic Adapter]
+  H --> DA[DeepSeek Adapter]
+  OA --> N[Normalized Result]
+  AA --> N
+  DA --> N
+  N --> Q[Proposal / Assistive Output]
+  N --> EX[Execution Telemetry]
+  Q -. no automatic authority .-> G[Governance]

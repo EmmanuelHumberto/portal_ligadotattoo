@@ -1,0 +1,12 @@
+{
+  "releaseId": "2026-08-12.1",
+  "gitSha": "GIT_SHA",
+  "images": {
+    "web": "registry/portal-web@sha256:DIGEST",
+    "api": "registry/portal-api@sha256:DIGEST",
+    "worker": "registry/portal-worker@sha256:DIGEST"
+  },
+  "migrationSet": "AR01-AR37",
+  "approvedFrom": "staging",
+  "createdAt": "ISO_TIMESTAMP"
+}

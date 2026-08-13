@@ -1,0 +1,22 @@
+groups:
+- name: portal-critical
+  rules:
+  - alert: PublicHighErrorRate
+    expr: portal_http_error_ratio > 0.05
+    for: 5m
+    labels: {severity: sev2}
+  - alert: JobBacklogOld
+    expr: portal_job_oldest_pending_seconds > 900
+    for: 10m
+    labels: {severity: sev2}
+  - alert: OutboxBacklogOld
+    expr: portal_outbox_oldest_pending_seconds > 900
+    for: 10m
+    labels: {severity: sev2}
+  - alert: DeadLetterGrowing
+    expr: increase(portal_dead_letter_total[15m]) > 10
+    labels: {severity: sev2}
+  - alert: MediaTakedownPropagationLag
+    expr: portal_media_takedown_pending_seconds > 60
+    for: 2m
+    labels: {severity: sev1}

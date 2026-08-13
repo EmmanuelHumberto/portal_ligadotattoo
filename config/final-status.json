@@ -1,0 +1,9 @@
+{
+  "arCompleted": 45,
+  "arPlanned": 45,
+  "formulation": "COMPLETE",
+  "implementationVerification": "PENDING_EXECUTION_EVIDENCE",
+  "stagingVerification": "PENDING_EXECUTION_EVIDENCE",
+  "productionGo": "PENDING_EXECUTION_EVIDENCE",
+  "nextLifecycle": "PRODUCT_RELEASES_AND_ADRS"
+}

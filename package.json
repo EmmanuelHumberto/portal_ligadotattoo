@@ -1,0 +1,28 @@
+{
+  "name": "portal-tattoo",
+  "private": true,
+  "version": "0.43.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build -ws --if-present",
+    "typecheck": "npm run typecheck -ws --if-present",
+    "test": "vitest run apps/api/test test/unit",
+    "lint": "npm run lint -ws --if-present",
+    "db:migrate": "npm run db:migrate -w @portal/api",
+    "bootstrap": "npm run bootstrap -w @portal/api",
+    "db:migrate:verify": "node scripts/verify-migrations.mjs",
+    "architecture:check": "node scripts/architecture-check.mjs",
+    "security:check": "sh scripts/check-secrets.sh",
+    "verify:static": "npm run db:migrate:verify && npm run architecture:check && npm run security:check",
+    "verify:full": "npm run verify:static && npm run typecheck && npm run lint && npm run test && npm run build"
+  },
+  "devDependencies": {
+    "@next/eslint-plugin-next": "^16.3.0",
+    "typescript": "^5.6.0",
+    "typescript-eslint": "^8.39.0",
+    "vitest": "^3.2.4"
+  }
+}

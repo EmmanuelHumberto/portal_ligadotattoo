@@ -1,0 +1,21 @@
+{
+  "program": "portal-tattoo",
+  "formulationVersion": "AR-45",
+  "architectureRange": "AR-01..AR-45",
+  "formulationStatus": "COMPLETE",
+  "candidate": {
+    "releaseId": "PENDING",
+    "gitSha": "PENDING",
+    "webImageDigest": "PENDING",
+    "apiImageDigest": "PENDING",
+    "workerImageDigest": "PENDING",
+    "migrationSet": "PENDING"
+  },
+  "verification": {
+    "ar36Security": "PENDING",
+    "ar38ReleaseCandidate": "PENDING",
+    "ar43FullBuild": "PENDING",
+    "ar44StagingAcceptance": "PENDING"
+  },
+  "productionDecision": "PENDING"
+}

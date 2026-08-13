@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: portal-worker}
+spec:
+  replicas: 2
+  selector: {matchLabels: {app: portal-worker}}
+  template:
+    metadata: {labels: {app: portal-worker}}
+    spec:
+      serviceAccountName: portal-worker
+      containers:
+      - name: worker
+        image: PORTAL_WORKER_IMAGE
+        envFrom:
+        - configMapRef: {name: portal-runtime-config}
+        - secretRef: {name: portal-worker-secrets}
+        resources:
+          requests: {cpu: 150m, memory: 256Mi}
+          limits: {cpu: "2", memory: 1536Mi}
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities: {drop: ["ALL"]}

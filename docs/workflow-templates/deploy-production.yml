@@ -1,0 +1,9 @@
+# Template only. Move to .github/workflows after implementing the platform-specific
+# release, backup and deployment adapters described in AR37.
+name: Promote production
+on: workflow_dispatch
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Platform-specific production deployment adapter is not configured" && exit 1

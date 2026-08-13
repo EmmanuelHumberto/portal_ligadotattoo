@@ -1,0 +1,12 @@
+resources:
+- ../../base/web.yaml
+- ../../base/api.yaml
+- ../../base/worker.yaml
+namespace: portal-prod
+replicas:
+- name: portal-web
+  count: 3
+- name: portal-api
+  count: 3
+- name: portal-worker
+  count: 2

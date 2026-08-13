@@ -1,0 +1,19 @@
+apiVersion: batch/v1
+kind: Job
+metadata: {name: portal-migrate-RELEASE_ID}
+spec:
+  backoffLimit: 1
+  template:
+    spec:
+      restartPolicy: Never
+      serviceAccountName: portal-migrator
+      containers:
+      - name: migrate
+        image: PORTAL_API_IMAGE
+        command: ["npm","run","db:migrate"]
+        envFrom:
+        - configMapRef: {name: portal-runtime-config}
+        - secretRef: {name: portal-migration-secrets}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities: {drop: ["ALL"]}

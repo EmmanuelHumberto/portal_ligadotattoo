@@ -1,0 +1,9 @@
+# Template only. Move to .github/workflows after implementing the platform-specific
+# resolve-release.sh and deploy.sh adapters described in AR37.
+name: Deploy staging
+on: workflow_dispatch
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Platform-specific staging deployment adapter is not configured" && exit 1
