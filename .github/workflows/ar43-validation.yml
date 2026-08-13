@@ -23,6 +23,7 @@ jobs:
       DATABASE_URL: postgres://portal:portal_ci@localhost:5432/portal
       PORT_API: 3001
       NODE_ENV: test
+      TEST_DATABASE_URL: postgres://portal:portal_ci@localhost:5432/portal
     steps:
     - uses: actions/checkout@v4
     - uses: actions/setup-node@v4

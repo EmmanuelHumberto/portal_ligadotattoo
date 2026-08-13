@@ -9,9 +9,9 @@ export async function enqueueProjectionForEvent(pool:Pool,event:any) {
 
   await pool.query(
     `insert into ops.job
-     (id,job_type,job_version,payload,status,available_at)
-     values (gen_random_uuid(),'projection.product_search',1,$1::jsonb,'PENDING',now())
-     on conflict do nothing`,
-    [JSON.stringify({ productId:event.aggregateId,eventId:event.id })],
+     (id,source_event_id,job_type,job_version,payload,status,available_at)
+     values (gen_random_uuid(),$1,'projection.product_search',1,$2::jsonb,'PENDING',now())
+     on conflict (source_event_id,job_type) where source_event_id is not null do nothing`,
+    [event.id,JSON.stringify({ productId:event.aggregateId,eventId:event.id })],
   );
 }

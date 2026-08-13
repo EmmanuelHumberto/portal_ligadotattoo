@@ -56,6 +56,10 @@ export class IngestionRunner {
                 snapshot_id=$2,deduplicated=$3 where id=$1`,
         [runId,snapshotId,Boolean(prior.rowCount)],
       );
+      await this.pool.query(
+        `update ingestion.crawl_target set last_crawled_at=now() where id=$1`,
+        [target.id],
+      );
       return 'DONE' as const;
     } catch (e:any) {
       await this.pool.query(

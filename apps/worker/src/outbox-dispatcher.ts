@@ -42,13 +42,14 @@ export class OutboxDispatcher {
               where id=$1`,
             [row.id],
           );
-        } catch {
+        } catch (error) {
           await client.query(
             `update ops.outbox_event
                 set attempts=attempts+1,
-                    available_at=now() + (interval '1 second' * least(300, power(2, attempts + 1)))
+                    available_at=now() + (interval '1 second' * least(300, power(2, attempts + 1))),
+                    last_error=$2
               where id=$1`,
-            [row.id],
+            [row.id,safeError(error)],
           );
         }
       }
@@ -61,4 +62,9 @@ export class OutboxDispatcher {
       client.release();
     }
   }
+}
+
+function safeError(error:unknown) {
+  const message=error instanceof Error ? error.message : String(error);
+  return message.replace(/(token|secret|password|key)=\S+/gi,'$1=[REDACTED]').slice(0,1000);
 }

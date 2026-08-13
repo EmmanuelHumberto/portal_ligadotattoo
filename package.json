@@ -9,7 +9,7 @@
   "scripts": {
     "build": "npm run build -ws --if-present",
     "typecheck": "npm run typecheck -ws --if-present",
-    "test": "vitest run apps/api/test test/unit",
+    "test": "vitest run apps/api/test test/unit test/integration/*.test.ts",
     "lint": "npm run lint -ws --if-present",
     "db:migrate": "npm run db:migrate -w @portal/api",
     "bootstrap": "npm run bootstrap -w @portal/api",
