@@ -25,7 +25,7 @@ export const ACCESS_TOKEN_VERIFIER = Symbol('ACCESS_TOKEN_VERIFIER');
 @Injectable()
 export class AuthGuard implements CanActivate {
   constructor(
-    private readonly reflector: Reflector,
+    @Inject(Reflector) private readonly reflector: Reflector,
     @Inject(ACCESS_TOKEN_VERIFIER) private readonly verifier: AccessTokenVerifier,
   ) {}
 
@@ -39,9 +39,15 @@ export class AuthGuard implements CanActivate {
     const match = /^Bearer (.+)$/i.exec(value);
     if (!match) throw new UnauthorizedException('Bearer token required');
 
-    const token = match[1];
+    const token = match[1]?.trim();
     if (!token) throw new UnauthorizedException('Bearer token required');
-    const claims = await this.verifier.verify(token);
+    if(token.length>16384)throw new UnauthorizedException('Bearer token is too large');
+    let claims:Awaited<ReturnType<AccessTokenVerifier['verify']>>;
+    try {
+      claims=await this.verifier.verify(token);
+    } catch {
+      throw new UnauthorizedException('Invalid or expired bearer token');
+    }
     req.actor = {
       actorId: claims.actorId,
       externalSubject: claims.sub,

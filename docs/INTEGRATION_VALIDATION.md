@@ -16,6 +16,7 @@ Data: 2026-08-12
 - Worker executando outbox e jobs PostgreSQL com retry, lease recovery e dead letter;
 - roteamento idempotente validado de evento de catálogo até a projeção de busca;
 - encerramento seguro do Worker validado com `SIGINT`;
+- verificador OIDC/JWKS implementado com validação de assinatura e claims;
 - `npm run verify:full` aprovado.
 
 ## Cobertura automatizada atual
@@ -24,6 +25,7 @@ Data: 2026-08-12
 - roteamento e fallback de IA: 4 testes;
 - extração básica de conteúdo HTML/JSON: 2 testes;
 - integração PostgreSQL do Worker e idempotência: 2 testes;
+- OIDC/JWKS, issuer, audience, expiração e claims: 7 testes;
 - typecheck de API, Web e Worker;
 - lint TypeScript/Next.js;
 - builds de produção de API, Web e Worker;
@@ -33,7 +35,7 @@ Data: 2026-08-12
 
 ## Ainda pendente para staging
 
-- configurar um verificador OIDC/JWKS real; o adaptador padrão rejeita tokens;
+- provisionar o issuer, cliente e capacidades no provedor OIDC de staging;
 - conectar scheduler e métricas operacionais do Worker ao ambiente de staging;
 - conectar storage S3/MinIO real ao `MEDIA_DELIVERY` e upload;
 - preparar dados/seeds representativos para o catálogo;

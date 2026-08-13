@@ -45,4 +45,5 @@ O gate executa validação das migrations, limites arquiteturais e de segredos,
 typecheck, lint, testes unitários e builds de produção.
 
 Consulte [docs/INTEGRATION_VALIDATION.md](docs/INTEGRATION_VALIDATION.md) para o
-estado validado e as pendências conhecidas.
+estado validado e as pendências conhecidas. Para proteger as rotas
+administrativas, consulte [docs/OIDC_CONFIGURATION.md](docs/OIDC_CONFIGURATION.md).
