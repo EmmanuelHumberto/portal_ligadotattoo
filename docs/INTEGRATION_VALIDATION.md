@@ -17,6 +17,7 @@ Data: 2026-08-12
 - roteamento idempotente validado de evento de catálogo até a projeção de busca;
 - encerramento seguro do Worker validado com `SIGINT`;
 - verificador OIDC/JWKS implementado com validação de assinatura e claims;
+- upload S3/MinIO validado com SHA-256 e persistência PostgreSQL consistente;
 - `npm run verify:full` aprovado.
 
 ## Cobertura automatizada atual
@@ -26,6 +27,7 @@ Data: 2026-08-12
 - extração básica de conteúdo HTML/JSON: 2 testes;
 - integração PostgreSQL do Worker e idempotência: 2 testes;
 - OIDC/JWKS, issuer, audience, expiração e claims: 7 testes;
+- upload, validação, compensação e integração MinIO: 5 testes;
 - typecheck de API, Web e Worker;
 - lint TypeScript/Next.js;
 - builds de produção de API, Web e Worker;
@@ -37,7 +39,7 @@ Data: 2026-08-12
 
 - provisionar o issuer, cliente e capacidades no provedor OIDC de staging;
 - conectar scheduler e métricas operacionais do Worker ao ambiente de staging;
-- conectar storage S3/MinIO real ao `MEDIA_DELIVERY` e upload;
+- conectar geração de variantes e CDN privada ao `MEDIA_DELIVERY` de staging;
 - preparar dados/seeds representativos para o catálogo;
 - executar Playwright E2E com fixtures e sessão administrativa;
 - executar testes de carga, segurança e rollback do AR38/AR44;

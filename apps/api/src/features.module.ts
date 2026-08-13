@@ -39,9 +39,13 @@ import { MediaLibraryController } from './media/media-library.controller';
 import { MediaLibraryQuery } from './media/media-library.query';
 import { MediaController } from './media/media.controller';
 import { MediaRepository } from './media/media.repository';
-import { MEDIA_DELIVERY, MediaDeliveryPort } from './media/media-storage.port';
+import {
+  MEDIA_DELIVERY,MEDIA_STORAGE,MediaDeliveryPort,
+} from './media/media-storage.port';
 import { PublicMediaQuery } from './media/public-media.query';
+import {createMediaStorage} from './media/s3-media-storage.adapter';
 import { SetMediaRightsHandler } from './media/set-media-rights.handler';
+import {UploadMediaHandler} from './media/upload-media.handler';
 import { AuditQuery } from './ops/audit.query';
 import { OperationsController } from './ops/operations.controller';
 import { OperationsQuery } from './ops/operations.query';
@@ -92,6 +96,7 @@ const providers = [
   RecordPriceHandler,
   AffiliateLinkService,
   MediaRepository,
+  UploadMediaHandler,
   MediaLibraryQuery,
   PublicMediaQuery,
   SetMediaRightsHandler,
@@ -103,6 +108,10 @@ const providers = [
   ExperimentService,
   FunnelQuery,
   QualityQuery,
+  {
+    provide:MEDIA_STORAGE,
+    useFactory:()=>createMediaStorage(process.env),
+  },
   {
     provide: MEDIA_DELIVERY,
     useFactory: (): MediaDeliveryPort => ({

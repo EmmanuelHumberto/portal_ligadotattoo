@@ -47,3 +47,4 @@ typecheck, lint, testes unitários e builds de produção.
 Consulte [docs/INTEGRATION_VALIDATION.md](docs/INTEGRATION_VALIDATION.md) para o
 estado validado e as pendências conhecidas. Para proteger as rotas
 administrativas, consulte [docs/OIDC_CONFIGURATION.md](docs/OIDC_CONFIGURATION.md).
+O fluxo de mídia está em [docs/MEDIA_STORAGE.md](docs/MEDIA_STORAGE.md).

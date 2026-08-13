@@ -24,10 +24,24 @@ jobs:
       PORT_API: 3001
       NODE_ENV: test
       TEST_DATABASE_URL: postgres://portal:portal_ci@localhost:5432/portal
+      TEST_OBJECT_STORAGE_ENDPOINT: http://127.0.0.1:9000
+      TEST_OBJECT_STORAGE_ACCESS_KEY: portal_ci
+      TEST_OBJECT_STORAGE_SECRET_KEY: portal_ci_secret
     steps:
     - uses: actions/checkout@v4
     - uses: actions/setup-node@v4
       with: {node-version: 22, cache: npm}
     - run: npm ci
+    - name: Start MinIO for media integration tests
+      run: |
+        docker run -d --name portal-minio -p 9000:9000 \
+          -e MINIO_ROOT_USER=portal_ci \
+          -e MINIO_ROOT_PASSWORD=portal_ci_secret \
+          minio/minio@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e server /data
+        for attempt in $(seq 1 30); do
+          curl -fsS http://127.0.0.1:9000/minio/health/live && break
+          sleep 1
+        done
+        curl -fsS http://127.0.0.1:9000/minio/health/live
     - run: npm run db:migrate
     - run: npm run verify:full
