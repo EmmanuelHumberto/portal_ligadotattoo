@@ -57,4 +57,9 @@ test('Web and API expose defensive headers',async({request})=>{
  expect(api.headers()['x-powered-by']).toBeUndefined();
  expect(api.headers()['ratelimit-limit']).toBe('240');
  expect(api.headers()['ratelimit-remaining']).toBeTruthy();
+ const ready=await request.get(`${apiBase}/health/ready`);
+ expect(ready.status()).toBe(200);
+ await expect(ready.json()).resolves.toMatchObject({
+  status:'UP',checks:[{name:'database',status:'UP'}],
+ });
 });

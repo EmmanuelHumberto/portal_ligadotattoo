@@ -11,6 +11,14 @@ API `/health/ready`:
 Final integrated readiness should include critical database connectivity and any
 dependency required for synchronous request correctness.
 
+Implemented API behavior:
+- `/health/live` stays independent from PostgreSQL;
+- `/health/ready` verifies connectivity and the critical catalog/outbox schema;
+- unavailable database or missing schema returns HTTP 503 without error details;
+- idle pool connection errors are handled without terminating the API process;
+- graceful shutdown encerra o pool antes de finalizar o processo;
+- connection/readiness timeouts are bounded by runtime configuration.
+
 Worker:
 - operational dashboard/heartbeat must prove processor loop is advancing;
 - queue/outbox lag remains the authoritative async-health signal.

@@ -18,6 +18,27 @@ describe('runtime security configuration',()=>{
     })).toThrow(/Invalid TRUST_PROXY_HOPS/);
   });
 
+  it('bounds database connection and readiness timeouts',()=>{
+    const config=validateRuntimeConfig({
+      DATABASE_URL:databaseUrl,DB_CONNECTION_TIMEOUT_MS:'3000',
+      DB_READINESS_TIMEOUT_MS:'750',
+    });
+    expect(config.dbConnectionTimeoutMs).toBe(3000);
+    expect(config.dbReadinessTimeoutMs).toBe(750);
+    expect(()=>validateRuntimeConfig({
+      DATABASE_URL:databaseUrl,DB_READINESS_TIMEOUT_MS:'0',
+    })).toThrow(/DB_READINESS_TIMEOUT_MS/);
+  });
+
+  it('bounds the database pool size',()=>{
+    expect(validateRuntimeConfig({
+      DATABASE_URL:databaseUrl,DB_POOL_MAX:'20',
+    }).dbPoolMax).toBe(20);
+    expect(()=>validateRuntimeConfig({
+      DATABASE_URL:databaseUrl,DB_POOL_MAX:'0',
+    })).toThrow(/DB_POOL_MAX/);
+  });
+
   it('requires independent session and rate-limit secrets in production',()=>{
     const production={
       NODE_ENV:'production',DATABASE_URL:databaseUrl,

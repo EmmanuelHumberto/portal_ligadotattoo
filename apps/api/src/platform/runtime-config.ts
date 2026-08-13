@@ -1,6 +1,7 @@
 export type RuntimeConfig={
  nodeEnv:string;port:number;databaseUrl:string;redisUrl?:string;
  allowedBrowserOrigins:string[];trustProxyHops:number;
+ dbPoolMax:number;dbConnectionTimeoutMs:number;dbReadinessTimeoutMs:number;
  ai:{
   defaultProvider:string;
   fallbackOrder:string[];
@@ -22,6 +23,9 @@ export function validateRuntimeConfig(env:NodeJS.ProcessEnv):RuntimeConfig{
   redisUrl:env.REDIS_URL,
   allowedBrowserOrigins:csv(env.ALLOWED_BROWSER_ORIGINS),
   trustProxyHops:boundedInteger(env.TRUST_PROXY_HOPS,0,0,3,'TRUST_PROXY_HOPS'),
+  dbPoolMax:databasePoolMax(env.DB_POOL_MAX),
+  dbConnectionTimeoutMs:databaseConnectionTimeoutMs(env.DB_CONNECTION_TIMEOUT_MS),
+  dbReadinessTimeoutMs:databaseReadinessTimeoutMs(env.DB_READINESS_TIMEOUT_MS),
   ai:{
    defaultProvider:env.AI_DEFAULT_PROVIDER??'openai',
    fallbackOrder:csv(env.AI_FALLBACK_ORDER),
@@ -43,3 +47,10 @@ function boundedInteger(
  if(!Number.isInteger(result)||result<min||result>max)throw new Error(`Invalid ${key}`);
  return result;
 }
+
+export const databaseConnectionTimeoutMs=(value?:string)=>
+ boundedInteger(value,2_000,100,10_000,'DB_CONNECTION_TIMEOUT_MS');
+export const databaseReadinessTimeoutMs=(value?:string)=>
+ boundedInteger(value,1_000,100,10_000,'DB_READINESS_TIMEOUT_MS');
+export const databasePoolMax=(value?:string)=>
+ boundedInteger(value,10,1,100,'DB_POOL_MAX');

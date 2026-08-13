@@ -1,20 +1,21 @@
 import { Inject,Injectable } from '@nestjs/common';
 import { Pool } from 'pg';
 import { PG_POOL } from '../platform/database.module';
+import {DatabaseReadinessService} from '../platform/database-readiness.service';
 
 @Injectable()
 export class ReadinessService {
-  constructor(@Inject(PG_POOL) private readonly pool:Pool){}
+  constructor(
+    @Inject(PG_POOL) private readonly pool:Pool,
+    private readonly database:DatabaseReadinessService,
+  ){}
 
   async readiness() {
     const checks:any[]=[];
-    try {
-      const started=Date.now();
-      await this.pool.query('select 1');
-      checks.push({name:'database',status:'UP',latencyMs:Date.now()-started});
-    } catch {
-      checks.push({name:'database',status:'DOWN'});
-    }
+    const database=await this.database.check();
+    checks.push(database);
+    if(database.status==='DOWN')
+      return {status:'DOWN',checks,checkedAt:new Date().toISOString()};
 
     const backlog=await this.safeCount(
       `select count(*)::int count from ops.job

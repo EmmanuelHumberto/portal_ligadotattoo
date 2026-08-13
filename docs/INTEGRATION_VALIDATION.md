@@ -25,6 +25,7 @@ Data: 2026-08-12
 - jornadas Playwright de catálogo, filtro, detalhe, oferta e comparação validadas;
 - headers defensivos e rate limiting por classe conectados ao runtime da API;
 - aquisição HTTPS com DNS pinado, proteção SSRF e redirects revalidados;
+- readiness real de banco/schema e sobrevivência da API a falhas do pool;
 - `npm run verify:full` aprovado.
 
 ## Cobertura automatizada atual
@@ -41,6 +42,7 @@ Data: 2026-08-12
 - Playwright público e proteção administrativa anônima: 6 testes executados;
 - rate limiting, classificação de rotas e headers defensivos: 4 testes;
 - política SSRF, IPs reservados, DNS misto, deadlines e redirects: 31 testes;
+- readiness, timeouts, lifecycle e tratamento de falhas do pool: 10 testes;
 - typecheck de API, Web e Worker;
 - lint TypeScript/Next.js;
 - builds de produção de API, Web e Worker;
