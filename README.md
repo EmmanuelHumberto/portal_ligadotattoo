@@ -56,3 +56,5 @@ O agendamento do Worker está em
 [docs/WORKER_SCHEDULER.md](docs/WORKER_SCHEDULER.md).
 Os limites HTTP e o smoke de carga estão em
 [docs/RATE_LIMITING.md](docs/RATE_LIMITING.md).
+A fronteira SSRF da ingestão está documentada em
+[docs/SAFE_INGESTION.md](docs/SAFE_INGESTION.md).

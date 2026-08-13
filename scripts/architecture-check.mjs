@@ -13,6 +13,10 @@ async function walk(p){
    violations.push(`${f}: provider credential reference in Web`);
   if(!f.includes('safe-url')&&/fetch\(\s*(input|url|sourceUrl)/.test(t))
    violations.push(`${f}: possible uncontrolled dynamic fetch`);
+  if(f.startsWith('apps/worker/src/ingestion/')&&
+     !f.endsWith('/http-acquirer.ts')&&
+     (/\bfetch\s*\(/.test(t)||/from ['"]node:https?['"]/.test(t)))
+   violations.push(`${f}: ingestion network access bypasses HttpAcquirer`);
  }
 }
 for(const r of roots)await walk(r);

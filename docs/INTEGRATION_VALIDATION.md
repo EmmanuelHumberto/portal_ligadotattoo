@@ -24,6 +24,7 @@ Data: 2026-08-12
 - fixtures sintéticas idempotentes bloqueadas em produção;
 - jornadas Playwright de catálogo, filtro, detalhe, oferta e comparação validadas;
 - headers defensivos e rate limiting por classe conectados ao runtime da API;
+- aquisição HTTPS com DNS pinado, proteção SSRF e redirects revalidados;
 - `npm run verify:full` aprovado.
 
 ## Cobertura automatizada atual
@@ -39,6 +40,7 @@ Data: 2026-08-12
 - política de ativação das fixtures sintéticas: 3 testes;
 - Playwright público e proteção administrativa anônima: 6 testes executados;
 - rate limiting, classificação de rotas e headers defensivos: 4 testes;
+- política SSRF, IPs reservados, DNS misto, deadlines e redirects: 31 testes;
 - typecheck de API, Web e Worker;
 - lint TypeScript/Next.js;
 - builds de produção de API, Web e Worker;
