@@ -1,5 +1,6 @@
 'use client';
 import {useEffect,useRef,useState} from 'react';
+import Link from 'next/link';
 import {clientQuery} from '../lib/client-query';
 
 export function GlobalSearch(){
@@ -28,10 +29,10 @@ export function GlobalSearch(){
     placeholder="Buscar máquinas, marcas, técnicas..."/>
   </form>
   {open&&items.length>0&&<div className="suggestions" role="listbox">
-   {items.map(x=><a key={`${x.type}:${x.id}`} href={x.url}
+   {items.map(x=><Link key={`${x.type}:${x.id}`} href={x.url}
      onClick={()=>setOpen(false)} role="option">
      <span>{x.title}</span><small>{x.type}</small>
-   </a>)}
+   </Link>)}
   </div>}
  </div>
 }

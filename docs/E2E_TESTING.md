@@ -1,6 +1,7 @@
 # Testes E2E locais
 
-Os testes Playwright exercitam o Web e a API reais com um catálogo sintético.
+Os testes Playwright exercitam o Web e a API reais com catálogo, busca,
+fabricantes e conteúdo editorial sintéticos.
 As fixtures são identificadas pelo prefixo `Fixture`, são idempotentes e nunca
 podem ser habilitadas com `NODE_ENV=production`. A API também as marca como
 sintéticas para que a interface nunca as apresente como dados verificados.
@@ -24,4 +25,6 @@ já existentes.
 O cenário administrativo anônimo é sempre executado e exige `401` ou `403`.
 Os cenários privilegiados só rodam quando
 `PLAYWRIGHT_ADMIN_STORAGE_STATE` aponta para um estado Playwright criado por um
-login OIDC real; não existe bypass de autenticação para testes.
+login OIDC real; não existe bypass de autenticação para testes. O cenário de
+autocomplete também falha se a CSP impedir a hidratação React, protegendo a
+integração do nonce.

@@ -43,13 +43,15 @@ export class PublicSearchQuery {
   async suggest(q:string) {
     if (q.trim().length < 2) return { items:[] };
     const r = await this.pool.query(
-      `select title
+      `select id,document_type,title,public_url
          from search.search_document
         where is_public=true and normalized_title like lower($1) || '%'
         order by popularity_score desc,title
         limit 8`,
       [q.trim()],
     );
-    return { items:r.rows.map(x => x.title) };
+    return {items:r.rows.map(x=>({
+      id:x.id,type:x.document_type,title:x.title,url:x.public_url,
+    }))};
   }
 }

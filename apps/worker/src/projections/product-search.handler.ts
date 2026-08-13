@@ -44,7 +44,7 @@ export class ProductSearchProjectionHandler {
                      is_public=excluded.is_public,
                      search_vector=excluded.search_vector,
                      updated_at=now()`,
-      [p.id,p.name,subtitle,`/produto/${p.slug}`],
+      [p.id,p.name,subtitle,`/maquinas/${p.slug}`],
     );
     return 'DONE' as const;
   }

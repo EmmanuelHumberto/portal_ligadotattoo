@@ -41,6 +41,42 @@ test('two products can be compared side by side',async({page,request})=>{
   .toBeVisible();
 });
 
+test('global search suggests and opens the canonical product route',async({page})=>{
+ const cspErrors:string[]=[];
+ page.on('console',message=>{
+  if(message.type()==='error'&&message.text().includes('Content Security Policy'))
+   cspErrors.push(message.text());
+ });
+ await page.goto('/');
+ await page.getByLabel('Buscar no Portal Tattoo').fill('Fixture');
+ const suggestion=page.getByRole('option',{name:/fixture pen pro/i});
+ await expect(suggestion).toBeVisible();
+ await suggestion.click();
+ await expect(page).toHaveURL(/\/maquinas\/fixture-pen-pro/);
+ expect(cspErrors).toEqual([]);
+});
+
+test('search results and manufacturer discovery are navigable',async({page})=>{
+ await page.goto('/buscar?q=Fixture');
+ await expect(page.getByRole('heading',{name:/busca no portal tattoo/i})).toBeVisible();
+ await expect(page.getByRole('link',{name:'Fixture Rotary One'})).toBeVisible();
+ await page.goto('/marcas');
+ await page.getByRole('link',{name:'Fixture Tattoo Labs'}).first().click();
+ await expect(page).toHaveURL(/\/marcas\/fixture-tattoo-labs/);
+ await expect(page.locator('article')).toHaveCount(2);
+});
+
+for(const journey of [
+ {path:'/noticias',title:'Novidades em máquinas de tatuagem'},
+ {path:'/blog',title:'Guia técnico de stroke'},
+ {path:'/eventos',title:'Convenção Tattoo Fixture'},
+])test(`public editorial journey ${journey.path}`,async({page})=>{
+ await page.goto(journey.path);
+ await page.getByRole('link',{name:journey.title}).first().click();
+ await expect(page.getByRole('heading',{name:journey.title})).toBeVisible();
+ await expect(page.getByText(/conteúdo é sintético/i)).toBeVisible();
+});
+
 test('robots and sitemap are public',async({request})=>{
  expect((await request.get('/robots.txt')).ok()).toBeTruthy();
  expect((await request.get('/sitemap.xml')).ok()).toBeTruthy();

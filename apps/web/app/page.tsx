@@ -1,8 +1,8 @@
 import Link from 'next/link';
-import {SiteShell} from '../components/site-shell';
+import {SiteHeader} from '../components/site-header';
 
 export default function Home(){
- return <SiteShell>
+ return <><SiteHeader/>
   <main className="shell">
    <section className="hero">
     <p className="eyebrow">PORTAL TATTOO</p>
@@ -15,5 +15,5 @@ export default function Home(){
     </div>
    </section>
   </main>
- </SiteShell>;
+ </>;
 }

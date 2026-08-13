@@ -1,12 +1,14 @@
 import type {MetadataRoute} from 'next';
+import {connection} from 'next/server';
 import {SITE} from '../lib/site';
 import {api} from '../lib/api';
 
 export default async function sitemap():Promise<MetadataRoute.Sitemap>{
+ await connection();
  const [products,editorial,events]=await Promise.all([
-  api('/public/seo/products').catch(()=>({items:[]})),
-  api('/public/seo/editorial').catch(()=>({items:[]})),
-  api('/public/seo/events').catch(()=>({items:[]})),
+  api('/public/products?limit=100').catch(()=>({items:[]})),
+  api('/public/editorial').catch(()=>({items:[]})),
+  api('/public/editorial?type=EVENT').catch(()=>({items:[]})),
  ]);
  const staticPaths=['/','/maquinas','/marcas','/noticias','/blog','/eventos','/ofertas'];
  const rows:MetadataRoute.Sitemap=staticPaths.map(path=>({

@@ -1,13 +1,12 @@
 import {NextRequest,NextResponse} from 'next/server';
 
-export function proxy(_req:NextRequest){
+export function proxy(req:NextRequest){
  const nonce=crypto.randomUUID().replace(/-/g,'');
- const res=NextResponse.next();
  const prod=process.env.NODE_ENV==='production';
 
  const csp=[
   "default-src 'self'",
-  `script-src 'self' 'nonce-${nonce}'${prod?'':" 'unsafe-eval'"}`,
+  `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${prod?'':" 'unsafe-eval'"}`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' https: data:",
   "font-src 'self'",
@@ -20,6 +19,10 @@ export function proxy(_req:NextRequest){
   prod?"upgrade-insecure-requests":"",
  ].filter(Boolean).join('; ');
 
+ const requestHeaders=new Headers(req.headers);
+ requestHeaders.set('x-nonce',nonce);
+ requestHeaders.set('Content-Security-Policy',csp);
+ const res=NextResponse.next({request:{headers:requestHeaders}});
  res.headers.set('Content-Security-Policy',csp);
  res.headers.set('X-Content-Type-Options','nosniff');
  res.headers.set('Referrer-Policy','strict-origin-when-cross-origin');
@@ -28,7 +31,6 @@ export function proxy(_req:NextRequest){
   'camera=(), microphone=(), geolocation=(), payment=()');
  res.headers.set('Cross-Origin-Opener-Policy','same-origin');
  res.headers.set('Cross-Origin-Resource-Policy','same-site');
- res.headers.set('x-csp-nonce',nonce);
  return res;
 }
-export const config={matcher:['/((?!_next/static|_next/image|favicon.ico).*)']};
+export const config={matcher:['/((?!api|_next/static|_next/image|favicon.ico).*)']};

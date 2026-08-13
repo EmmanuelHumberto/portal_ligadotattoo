@@ -51,11 +51,12 @@ integration('worker runtime',()=>{
   const [event,job,projection]=await Promise.all([
    pool.query('select status from ops.outbox_event where id=$1',[eventId]),
    pool.query('select status from ops.job where source_event_id=$1',[eventId]),
-   pool.query('select title from search.search_document where source_id=$1',[productId]),
+   pool.query('select title,public_url from search.search_document where source_id=$1',[productId]),
   ]);
   expect(event.rows[0]?.status).toBe('PUBLISHED');
   expect(job.rows[0]?.status).toBe('DONE');
   expect(projection.rows[0]?.title).toBe('Worker Machine');
+  expect(projection.rows[0]?.public_url).toBe(`/maquinas/worker-machine-${productId}`);
  });
 
  it('does not duplicate a job when an event is delivered again',async()=>{

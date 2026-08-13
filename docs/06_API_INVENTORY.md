@@ -5,10 +5,12 @@ Representative public boundaries:
 - GET /public/products/facets
 - GET /public/products/:slug
 - GET /public/products/compare
+- GET /public/manufacturers
+- GET /public/manufacturers/:slug
+- GET /public/search
 - GET /public/search/suggest
-- GET /public/seo/products
-- GET /public/seo/editorial
-- GET /public/seo/events
+- GET /public/editorial
+- GET /public/editorial/:slug
 - GET /go/listing/:id
 - POST /analytics/events
 - health/readiness endpoints

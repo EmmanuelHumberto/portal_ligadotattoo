@@ -64,3 +64,5 @@ O gate reproduzível e o pacote de evidências de release estão em
 [docs/RELEASE_VERIFICATION.md](docs/RELEASE_VERIFICATION.md).
 O avanço consolidado do roadmap está em
 [docs/IMPLEMENTATION_STATUS.md](docs/IMPLEMENTATION_STATUS.md).
+As rotas e projeções públicas de descoberta estão em
+[docs/PUBLIC_DISCOVERY.md](docs/PUBLIC_DISCOVERY.md).

@@ -1,11 +1,15 @@
 import Link from 'next/link';
+import {GlobalSearch} from './global-search';
 
 export function SiteHeader(){
- const nav=['Máquinas','Marcas','Notícias','Blog Técnico','Eventos','Ofertas'];
+ const nav:Array<[string,string]>=[
+  ['Máquinas','/maquinas'],['Marcas','/marcas'],['Notícias','/noticias'],
+  ['Blog Técnico','/blog'],['Eventos','/eventos'],['Ofertas','/ofertas'],
+ ];
  return <header className="header"><div className="shell headerIn">
   <Link className="brand" href="/">PORTAL TATTOO<small>CONHECIMENTO · TECNOLOGIA · ARTE</small></Link>
-  <nav aria-label="Principal">{nav.map(x=><Link key={x} href={'/'+slug(x)}>{x}</Link>)}</nav>
-  <form action="/buscar"><input name="q" aria-label="Buscar" placeholder="Buscar máquinas, marcas, técnicas..."/></form>
+  <nav aria-label="Principal">{nav.map(([label,href])=><Link key={href}
+    href={href}>{label}</Link>)}</nav>
+  <GlobalSearch/>
  </div></header>
 }
-function slug(x:string){return x.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/ /g,'-').replace('blog-tecnico','blog')}

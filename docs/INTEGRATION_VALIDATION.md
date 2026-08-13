@@ -10,8 +10,8 @@ Data: 2026-08-13
 - migrations aplicadas com sucesso em PostgreSQL 16 limpo;
 - bootstrap aplicado com sucesso;
 - API iniciada com todos os módulos NestJS registrados;
-- health, catálogo público e busca pública verificados;
-- frontend iniciado e smoke testado nas rotas `/`, `/maquinas` e `/api/health`;
+- health, catálogo, fabricantes, busca e editorial público verificados;
+- frontend iniciado e testado em Home, máquinas, marcas, busca, notícias, blog e eventos;
 - rotas administrativas rejeitam acesso anônimo com HTTP 401;
 - Worker executando outbox e jobs PostgreSQL com retry, lease recovery e dead letter;
 - roteamento idempotente validado de evento de catálogo até a projeção de busca;
@@ -22,7 +22,8 @@ Data: 2026-08-13
 - entrega S3 privada assinada e interrupção de emissão após expiração de direitos;
 - scheduler PostgreSQL idempotente e métricas operacionais por tipo de job;
 - fixtures sintéticas idempotentes bloqueadas em produção;
-- jornadas Playwright de catálogo, filtro, detalhe, oferta e comparação validadas;
+- jornadas Playwright de catálogo, busca, marcas, editorial, oferta e comparação validadas;
+- nonce CSP por requisição e hidratação React validados no navegador;
 - headers defensivos e rate limiting por classe conectados ao runtime da API;
 - aquisição HTTPS com DNS pinado, proteção SSRF e redirects revalidados;
 - readiness real de banco/schema e sobrevivência da API a falhas do pool;
@@ -40,7 +41,8 @@ Data: 2026-08-13
 - geração Sharp, configuração, chaves de retry e variantes S3: 4 testes;
 - scheduler, frequências, deduplicação, polling, retenção e publicação atômica: 6 testes;
 - política de ativação das fixtures sintéticas: 3 testes;
-- Playwright público e proteção administrativa anônima: 6 testes executados;
+- Playwright público e proteção administrativa anônima: 11 testes executados;
+- descoberta pública, sugestões, fabricantes e detalhes de eventos: 3 testes;
 - rate limiting, classificação de rotas e headers defensivos: 4 testes;
 - política SSRF, IPs reservados, DNS misto, deadlines e redirects: 31 testes;
 - readiness, timeouts, lifecycle e tratamento de falhas do pool: 10 testes;
@@ -60,8 +62,8 @@ Data: 2026-08-13
 - decidir entre URLs S3 assinadas e CDN privada no ambiente de staging;
 - executar os cenários Playwright privilegiados com sessão OIDC administrativa;
 - executar testes de carga, segurança e rollback do AR38/AR44;
-- produzir imagens imutáveis e evidências do ambiente de staging.
-- completar as superfícies públicas de notícias, blog, eventos, fabricantes e busca;
+- produzir imagens imutáveis e evidências do ambiente de staging;
+- implementar a página pública agregada de ofertas;
 - completar as áreas administrativas além do dashboard operacional inicial.
 
 Este resultado promove o projeto de “formulação completa” para “baseline local

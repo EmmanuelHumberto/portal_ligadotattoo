@@ -13,6 +13,8 @@ import { CreateProductHandler } from './catalog/create-product.handler';
 import { ProductRepository } from './catalog/product.repository';
 import { PublicCatalogController } from './catalog/public-catalog.controller';
 import { PublicCommerceController } from './catalog/public-commerce.controller';
+import {PublicManufacturerController} from './catalog/public-manufacturer.controller';
+import {PublicManufacturerQuery} from './catalog/public-manufacturer.query';
 import { PublicProductQuery } from './catalog/public-product.query';
 import { AffiliateLinkService } from './commerce/affiliate-link.service';
 import { CommerceController } from './commerce/commerce.controller';
@@ -58,6 +60,7 @@ const controllers = [
   ProductController,
   PublicCatalogController,
   PublicCommerceController,
+  PublicManufacturerController,
   KnowledgeController,
   EditorialController,
   IngestionController,
@@ -76,6 +79,7 @@ const providers = [
   ProductRepository,
   CreateProductHandler,
   PublicProductQuery,
+  PublicManufacturerQuery,
   CommercePublicQuery,
   ClaimRepository,
   CanonicalRepository,
