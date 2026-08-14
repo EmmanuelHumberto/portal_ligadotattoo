@@ -35,11 +35,15 @@ export class KnowledgeQuery {
 
   async proposals(status='PENDING',limit=50) {
     const r=await this.pool.query(
-      `select id,subject_type,subject_id,property_key,proposed_value,
-              evidence_ids,status,created_by,created_at,version
-         from knowledge.canonical_proposal
-        where status=$1
-        order by created_at
+      `select p.id,p.subject_type,p.subject_id,p.property_key,p.proposed_value,
+              p.evidence_ids,p.status,p.created_by,p.created_at,p.version,
+              pm.name subject_name,pm.slug subject_slug,m.name manufacturer_name
+         from knowledge.canonical_proposal p
+         left join catalog.product_model pm
+           on pm.id=p.subject_id and p.subject_type='PRODUCT_MODEL'
+         left join catalog.manufacturer m on m.id=pm.manufacturer_id
+        where p.status=$1
+        order by p.created_at
         limit $2`,
       [status,Math.min(Math.max(limit,1),100)],
     );
@@ -48,7 +52,13 @@ export class KnowledgeQuery {
 
   async proposal(id:string) {
     const p=await this.pool.query(
-      `select * from knowledge.canonical_proposal where id=$1`,
+      `select p.*,
+              pm.name subject_name,pm.slug subject_slug,m.name manufacturer_name
+         from knowledge.canonical_proposal p
+         left join catalog.product_model pm
+           on pm.id=p.subject_id and p.subject_type='PRODUCT_MODEL'
+         left join catalog.manufacturer m on m.id=pm.manufacturer_id
+        where p.id=$1`,
       [id],
     );
     if (!p.rowCount) return null;
@@ -65,6 +75,22 @@ export class KnowledgeQuery {
           and valid_to is null`,
       [row.subject_type,row.subject_id,row.property_key],
     );
-    return {...row,evidence:evidence.rows,currentFact:current.rows[0] ?? null};
+    const conflict=await this.pool.query(
+      `select id,status,created_at,resolved_at,resolved_by
+         from knowledge.claim_conflict
+        where subject_type=$1 and subject_id=$2 and property_key=$3
+        order by created_at desc limit 1`,
+      [row.subject_type,row.subject_id,row.property_key],
+    );
+    return {
+      ...row,
+      subject:row.subject_type==='PRODUCT_MODEL'
+        ? { id:row.subject_id, name:row.subject_name, slug:row.subject_slug,
+            manufacturer:row.manufacturer_name }
+        : null,
+      evidence:evidence.rows,
+      currentFact:current.rows[0] ?? null,
+      conflict:conflict.rows[0] ?? null,
+    };
   }
 }

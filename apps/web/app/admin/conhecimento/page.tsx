@@ -47,8 +47,8 @@ export default async function Page(){
   <AdminCollection result={proposals}
    hrefFor={row=>`/admin/conhecimento/propostas/${String(row.id)}`}
    columns={[
+    {key:'subject_name',label:'Produto'},
     {key:'property_key',label:'Propriedade'},
-    {key:'subject_type',label:'Sujeito'},
     {key:'status',label:'Status'},
     {key:'version',label:'Versão'},
     {key:'created_at',label:'Criada'},
