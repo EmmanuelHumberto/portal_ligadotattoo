@@ -4,7 +4,7 @@ import {GlobalSearch} from './global-search';
 export function SiteHeader(){
  const nav:Array<[string,string]>=[
   ['Máquinas','/maquinas'],['Fontes','/fontes'],['Acessórios','/acessorios'],
-  ['Cartuchos','/cartuchos'],['Marcas','/marcas'],['Notícias','/noticias'],
+  ['Cartuchos','/cartuchos'],['Tintas','/tintas'],['Marcas','/marcas'],['Notícias','/noticias'],
   ['Blog Técnico','/blog'],['Eventos','/eventos'],['Ofertas','/ofertas'],
  ];
  return <header className="header"><div className="shell headerIn">

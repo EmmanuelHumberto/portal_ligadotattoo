@@ -10,7 +10,7 @@ export default async function sitemap():Promise<MetadataRoute.Sitemap>{
   api('/public/editorial').catch(()=>({items:[]})),
   api('/public/editorial?type=EVENT').catch(()=>({items:[]})),
  ]);
- const staticPaths=['/','/maquinas','/marcas','/noticias','/blog','/eventos','/ofertas'];
+ const staticPaths=['/','/maquinas','/fontes','/acessorios','/cartuchos','/tintas','/marcas','/noticias','/blog','/eventos','/ofertas'];
  const rows:MetadataRoute.Sitemap=staticPaths.map(path=>({
   url:SITE.url+path,changeFrequency:path==='/'?'daily':'weekly',
   priority:path==='/'?1:.8,

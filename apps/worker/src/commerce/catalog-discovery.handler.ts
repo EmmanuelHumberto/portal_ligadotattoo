@@ -268,9 +268,11 @@ function isNoise(name:string):boolean{
 function classifyProductType(name:string):string{
   const n=name.toLowerCase();
   if(/cartridge/i.test(n) && !/machine/i.test(n)) return 'CARTRIDGE';
-  if(/power supply|power box|power pack|power unit|fonte/i.test(n) && !/machine/i.test(n)) return 'POWER_SUPPLY';
+  if(/power supply|power box|power pack|power unit|powerpack|fonte/i.test(n) && !/machine/i.test(n)) return 'POWER_SUPPLY';
   if(/battery|batteries|powerbolt|power bolt/i.test(n) && !/machine|pen|rotary/i.test(n)) return 'BATTERY';
-  if(/machine|tattoo pen|rotary|wand|shader|packer|liner|coil/i.test(n)) return 'PEN';
+  if(/machine|rotary|wand|shader|packer|liner|coil|tattoo pen|wireless pen|power pen|pen gun|tattoo gun|tattoo kit|\bpmu\b/i.test(n)) return 'PEN';
+  if(/\bink\b|tinta|pigment|colour|color|greywash|graywash/i.test(n)
+     && !/cup|cap|grip|cartridge|needle|cable|rca/i.test(n)) return 'INK';
   return 'ACCESSORY';
 }
 

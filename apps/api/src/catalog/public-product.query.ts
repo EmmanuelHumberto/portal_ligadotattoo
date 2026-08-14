@@ -261,6 +261,7 @@ const LABELS:Record<string,string>={
   accessories:'Acessórios',summary:'Resumo',description:'Descrição',
   PEN:'Máquina pen',ROTARY:'Máquina rotativa',POWER_SUPPLY:'Fonte',
   BATTERY:'Bateria',CARTRIDGE:'Cartucho',ACCESSORY:'Acessório',
+  INK:'Tinta',
 };
 
 function humanize(key: string | undefined | null) {
