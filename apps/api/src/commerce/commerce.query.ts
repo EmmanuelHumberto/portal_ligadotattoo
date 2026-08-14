@@ -32,23 +32,26 @@ export class CommerceQuery {
   async publicOffers(slug:string) {
     const r=await this.pool.query(
       `select li.id listing_id,s.name seller,po.amount,po.currency,
-              po.availability,po.observed_at,li.url listing_url
+              po.availability,po.observed_at,li.url listing_url,
+              (po.observed_at is not null
+               and po.observed_at >= now() - s.public_freshness_interval) price_fresh
          from catalog.product_model p
          join commerce.listing li on li.product_model_id=p.id
          join commerce.seller s on s.id=li.seller_id
-         join lateral (
+         left join lateral (
            select amount,currency,availability,observed_at
              from commerce.price_observation x
             where x.listing_id=li.id order by observed_at desc limit 1
          ) po on true
         where p.slug=$1 and li.status='ACTIVE' and s.status='ACTIVE'
-          and po.observed_at >= now() - s.public_freshness_interval
-        order by po.amount`,
+        order by po.amount nulls last`,
       [slug],
     );
     return {items:r.rows.map(x=>({
-      listingId:x.listing_id,seller:x.seller,amount:Number(x.amount),
-      currency:x.currency,availability:x.availability,
+      listingId:x.listing_id,seller:x.seller,
+      amount:x.price_fresh && x.amount!=null ? Number(x.amount) : null,
+      currency:x.price_fresh ? x.currency : null,
+      availability:x.availability,
       observedAt:x.observed_at,
       storeDomain:domainOf(x.listing_url),
       outboundUrl:`/go/listing/${x.listing_id}`,

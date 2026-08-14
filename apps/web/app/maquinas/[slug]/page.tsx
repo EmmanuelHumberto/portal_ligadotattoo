@@ -38,9 +38,9 @@ export default async function Product({params}:{params:Promise<{slug:string}>}){
   <section className="detailGrid"><article className="card content"><h2>Visão geral</h2><p>{p.description}</p></article>
    <aside id="ofertas" className="card offers"><h2>Ofertas</h2>
     {(offers.items??[]).map((o:any)=><a key={o.listingId} href={o.outboundUrl} rel="nofollow sponsored">
-     <b>{o.seller}</b><span>{o.currency} {o.amount}</span>
+     <b>{o.seller}</b><span>{o.amount!=null?`${o.currency} ${o.amount}`:'Site do fabricante'}</span>
      <small className="muted">{o.storeDomain??'loja'}</small>
-     <em className="offerGo">Ir para a loja</em>
+     <em className="offerGo">Ir para o site</em>
     </a>)}
     {!offers.items?.length&&<p className="muted">Nenhuma oferta recente disponível.</p>}
    </aside>
