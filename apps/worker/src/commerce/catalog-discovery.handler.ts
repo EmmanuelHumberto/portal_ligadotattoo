@@ -46,6 +46,22 @@ export class CatalogDiscoveryHandler implements JobHandler {
       }
       return created;
     }
+    const vtex=await this.fetchVtexProducts(base);
+    if(vtex){
+      let created=0;
+      for(const p of vtex.slice(0,80)){
+        try { if(await this.ingestVtexProduct(m,base,p))created++; } catch {}
+      }
+      return created;
+    }
+    const sitemap=await this.fetchSitemapUrls(base);
+    if(sitemap){
+      let created=0;
+      for(const url of sitemap.slice(0,80)){
+        try { if(await this.ingestProduct(m,url))created++; } catch {}
+      }
+      return created;
+    }
     const pages=[
       base,
       `${base}/tattoo-machines`,`${base}/machines`,`${base}/pages/machines`,
@@ -87,16 +103,84 @@ export class CatalogDiscoveryHandler implements JobHandler {
     }
   }
 
+  private async fetchVtexProducts(base:string):Promise<any[]|null>{
+    try {
+      const r=await this.http.acquire({
+        url:`${base}/api/catalog_system/pub/products/search?_from=0&_to=99`,
+        allowedHosts:[],maxBytes:5_000_000,timeoutMs:20_000,
+      });
+      const data=JSON.parse(r.body.toString('utf8'));
+      return Array.isArray(data) && data.length ? data : null;
+    } catch {
+      return null;
+    }
+  }
+
+  private async ingestVtexProduct(m:any,base:string,p:any):Promise<boolean>{
+    const raw=String(p.productName ?? '').trim();
+    const name=cleanProductName(raw) ?? raw;
+    const linkText=String(p.linkText ?? '');
+    const url=`${base}/${linkText}/p`;
+    const imageUrl=(Array.isArray(p.items) && p.items[0]?.images?.[0]?.imageUrl)
+      ? String(p.items[0].images[0].imageUrl) : undefined;
+    const tags=(Array.isArray(p.allSpecifications) ? p.allSpecifications : [])
+      .map((x:unknown)=>String(x));
+    if(p.brand)tags.push(String(p.brand));
+    return this.persistProduct(m,{
+      name,url,category:classifyProductType(name,p.brand,tags),
+      imageUrl,description:cleanShopifyBody(p.description ?? ''),
+    });
+  }
+
+  private async fetchSitemapUrls(base:string):Promise<string[]|null>{
+    try {
+      const r=await this.http.acquire({
+        url:`${base}/sitemap.xml`,allowedHosts:[],maxBytes:2_000_000,timeoutMs:20_000,
+      });
+      const xml=r.body.toString('utf8');
+      const locs=[...xml.matchAll(/<loc>([^<]+)<\/loc>/gi)].map(m=>m[1] ?? '');
+      if(!locs.length)return null;
+      const isIndex=locs.some(l=>l.endsWith('.xml'));
+      if(!isIndex)return locs.length ? locs : null;
+      const productUrls:string[]=[];
+      for(const loc of locs.filter(l=>l.endsWith('.xml'))){
+        try {
+          const sub=await this.http.acquire({
+            url:loc,allowedHosts:[],maxBytes:2_000_000,timeoutMs:20_000,
+          });
+          const subXml=sub.body.toString('utf8');
+          for(const m of subXml.matchAll(/<loc>([^<]+)<\/loc>/gi))
+            if(m[1])productUrls.push(m[1]);
+        } catch {}
+      }
+      return productUrls.length ? productUrls : null;
+    } catch {
+      return null;
+    }
+  }
+
   private async ingestShopifyProduct(m:any,base:string,p:any):Promise<boolean>{
     const rawTitle=String(p.title ?? '').trim();
     const name=cleanProductName(rawTitle) ?? rawTitle;
     if(!name || isNoise(name))return false;
-    const slug=slugify(name);
     const handle=String(p.handle ?? '');
-    const url=handle ? `${base}/products/${handle}` : base;
     const productType=String(p.product_type ?? '');
     const tags=Array.isArray(p.tags) ? p.tags.map((x:unknown)=>String(x)) : [];
-    const category=classifyProductType(name,productType,tags);
+    const imageUrl=Array.isArray(p.images) && p.images[0]?.src
+      ? String(p.images[0].src) : undefined;
+    return this.persistProduct(m,{
+      name,url:handle?`${base}/products/${handle}`:base,
+      category:classifyProductType(name,productType,tags),
+      imageUrl,description:cleanShopifyBody(p.body_html),
+    });
+  }
+
+  private async persistProduct(m:any,input:{
+    name:string;url:string;category:string;imageUrl?:string;description?:string;
+  }):Promise<boolean>{
+    const name=input.name;
+    const slug=slugify(name);
+    if(!name || isNoise(name))return false;
 
     let productId=null;
     const existing=await this.pool.query(
@@ -112,7 +196,7 @@ export class CatalogDiscoveryHandler implements JobHandler {
           model_code,lifecycle,version)
          values ($1,$2,$5,$3,lower($3),$4,null,'ACTIVE',1)
          returning id`,
-        [randomUUID(),m.id,name,slug,category],
+        [randomUUID(),m.id,name,slug,input.category],
       );
       productId=pm.rows[0].id;
     }
@@ -128,18 +212,16 @@ export class CatalogDiscoveryHandler implements JobHandler {
             select 1 from commerce.listing li
              where li.normalized_url=$4
           )`,
-      [randomUUID(),productId,slug,url,m.slug],
+      [randomUUID(),productId,slug,input.url,m.slug],
     );
 
-    const imgUrl=Array.isArray(p.images) && p.images[0]?.src
-      ? String(p.images[0].src) : undefined;
-    if(imgUrl){
+    if(input.imageUrl){
       const hasImg=await this.pool.query(
         `select 1 from media.media_link
           where subject_type='PRODUCT_MODEL' and subject_id=$1 limit 1`,[productId],
       );
       if(!hasImg.rowCount){
-        const mediaId=await this.downloadImage(imgUrl,String(m.name));
+        const mediaId=await this.downloadImage(input.imageUrl,String(m.name));
         if(mediaId){
           await this.pool.query(
             `insert into media.media_link
@@ -155,17 +237,16 @@ export class CatalogDiscoveryHandler implements JobHandler {
       }
     }
 
-    const desc=cleanShopifyBody(p.body_html);
-    if(desc && desc.length>20){
+    if(input.description && input.description.length>20){
       const hasDesc=await this.pool.query(
         `select 1 from knowledge.canonical_fact
           where subject_type='PRODUCT_MODEL' and subject_id=$1
             and property_key='description' limit 1`,[productId],
       );
       if(!hasDesc.rowCount){
-        await this.recordFact(productId,'description',desc.slice(0,3000),null,url);
+        await this.recordFact(productId,'description',input.description.slice(0,3000),null,input.url);
       }
-      await this.recordSpecs(productId,desc,url,category);
+      await this.recordSpecs(productId,input.description,input.url,input.category);
     }
     return true;
   }
