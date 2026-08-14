@@ -203,7 +203,10 @@ function extractProductLinks(html:string,baseUrl:string):string[]{
 }
 
 function isNoise(name:string):boolean{
-  return /comparison|tattoo machines|rotary machines|stencil printer|wireless thermal/i.test(name);
+  const n=name.toLowerCase();
+  if(n.includes('▾'))return true;
+  if(/para tatuar|comodidad|robustos|ergonômicos|fácil de limpar/i.test(n))return true;
+  return /comparison|tattoo machines|rotary machines|stencil printer|wireless thermal/i.test(n);
 }
 
 function classifyProductType(name:string):string{
