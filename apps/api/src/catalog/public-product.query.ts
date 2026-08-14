@@ -207,7 +207,7 @@ export class PublicProductQuery {
     ]);
     return {
       brands: brands.rows,
-      types: types.rows.map((t:any)=>({...t,label:humanize(t.product_type_key)})),
+      types: types.rows.map((t:any)=>({...t,label:humanize(t.value)})),
       applications: [],
       priceBands: [],
     };
@@ -252,6 +252,7 @@ const LABELS:Record<string,string>={
   BATTERY:'Bateria',CARTRIDGE:'Cartucho',ACCESSORY:'Acessório',
 };
 
-function humanize(key: string) {
+function humanize(key: string | undefined | null) {
+  if(!key)return '';
   return LABELS[key] ?? key.replaceAll('_',' ').replace(/\b\w/g, c => c.toUpperCase());
 }
