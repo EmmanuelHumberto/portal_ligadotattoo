@@ -5,6 +5,7 @@ import {SiteHeader} from '../../../components/site-header';
 import {JsonLd} from '../../../components/json-ld';
 import {productJsonLd} from '../../../lib/structured-data';
 import {pageMetadata} from '../../../lib/seo';
+import {CompareButton} from '../../../components/compare-dock';
 
 export async function generateMetadata({params}:{params:Promise<{slug:string}>}):Promise<Metadata>{
  const {slug}=await params;
@@ -31,7 +32,10 @@ export default async function Product({params}:{params:Promise<{slug:string}>}){
    <div className="summary"><span className="badge">{p.isSyntheticFixture?'DADOS SINTÉTICOS':'DADOS VERIFICADOS'}</span><h1>{p.name}</h1>
     <p className="muted">{p.brand?.name} · {p.machineTypeLabel??p.machineType}</p><p>{p.summary}</p>
     <dl>{(p.specifications??[]).slice(0,7).map((s:any)=><div key={s.key}><dt>{s.label}</dt><dd>{s.value}</dd></div>)}</dl>
-    <a className="btn" href="#ofertas">Ver ofertas</a>
+    <div className="actions">
+     <CompareButton item={{id:p.id,slug:p.slug,name:p.name,image:p.heroMedia?.url}}/>
+     <a className="btn" href="#ofertas">Ver ofertas</a>
+    </div>
    </div>
   </section>
   <section className="card provenance">{p.isSyntheticFixture?<><b>Fixture de desenvolvimento</b><span> Estes dados são sintéticos e não representam um produto real.</span></>:<><b>Dados verificados por humanos</b><span> Consulte evidências e histórico de alterações.</span></>}</section>

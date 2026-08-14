@@ -2,7 +2,7 @@
 import {createContext,useContext,useMemo,useState} from 'react';
 import {track} from '../lib/analytics';
 
-type Item={id:string;slug:string;name:string;image?:string};
+export type Item={id:string;slug:string;name:string;image?:string};
 const C=createContext<any>(null);
 
 export function CompareProvider({children}:{children:React.ReactNode}){
@@ -21,6 +21,17 @@ export function CompareProvider({children}:{children:React.ReactNode}){
  return <C.Provider value={api}>{children}<CompareDock/></C.Provider>
 }
 export const useCompare=()=>useContext(C);
+
+export function CompareButton({item}:{item:Item}){
+ const c=useCompare();
+ if(!c)return null;
+ const added=c.items.some((i:Item)=>i.id===item.id);
+ return <button className="btn secondary" type="button"
+  aria-pressed={added}
+  onClick={()=>added?c.remove(item.id):c.add(item)}>
+  {added?'Na comparação ✓':'Adicionar à comparação'}
+ </button>;
+}
 
 function CompareDock(){
  const c=useCompare();if(!c?.items.length)return null;
