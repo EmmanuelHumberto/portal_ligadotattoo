@@ -134,7 +134,65 @@ export class CatalogDiscoveryHandler implements JobHandler {
         );
       }
     }
+    const hasFact=await this.pool.query(
+      `select 1 from knowledge.canonical_fact
+        where subject_type='PRODUCT_MODEL' and subject_id=$1 limit 1`,[productId],
+    );
+    if(!hasFact.rowCount){
+      try { await this.recordContent(productId,html,url); } catch {}
+    }
     return true;
+  }
+
+  private async recordContent(productId:string,html:string,sourceUrl:string):Promise<void>{
+    const text=html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi,' ')
+      .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi,' ')
+      .replace(/<[^>]+>/g,' ')
+      .replace(/\s+/g,' ')
+      .trim();
+    if(text.length>30){
+      await this.recordFact(productId,'description',text.slice(0,600),null,sourceUrl);
+      if(text.length>80){
+        await this.recordFact(productId,'summary',text.slice(0,220),null,sourceUrl);
+      }
+    }
+    for(const s of extractSpecTable(html)){
+      const key=slugify(s.key);
+      if(key && key.length<40 && s.value){
+        await this.recordFact(productId,key,s.value,null,sourceUrl);
+      }
+    }
+  }
+
+  private async recordFact(
+    productId:string,key:string,value:string,unit:string|null,sourceUrl:string,
+  ):Promise<void>{
+    const claimId=randomUUID();
+    const proposalId=randomUUID();
+    await this.pool.query(
+      `insert into knowledge.claim
+       (id,subject_type,subject_id,property_key,value,claimant_type,source_url,
+        observed_at,confidence,status,version,created_at)
+       values ($1,'PRODUCT_MODEL',$2,$3,$4::jsonb,'MANUFACTURER',$5,now(),0.7,
+               'ACTIVE',1,now())`,
+      [claimId,productId,key,JSON.stringify(value),sourceUrl],
+    );
+    await this.pool.query(
+      `insert into knowledge.canonical_proposal
+       (id,subject_type,subject_id,property_key,proposed_value,evidence_ids,status,
+        created_by,created_at,decided_by,decided_at,decision_reason,version)
+       values ($1,'PRODUCT_MODEL',$2,$3,$4::jsonb,ARRAY[$5]::uuid[],'APPROVED',
+               'catalog',now(),'catalog',now(),'CATALOG_IMPORT',1)`,
+      [proposalId,productId,key,JSON.stringify(value),claimId],
+    );
+    await this.pool.query(
+      `insert into knowledge.canonical_fact
+       (id,subject_type,subject_id,property_key,value,unit,valid_from,proposal_id,
+        decided_by,decision_reason,version)
+       values (gen_random_uuid(),'PRODUCT_MODEL',$1,$2,$3::jsonb,$4,now(),$5,
+               'catalog','CATALOG_IMPORT',1)`,
+      [productId,key,JSON.stringify(value),unit,proposalId],
+    );
   }
 
   private async downloadImage(url:string,attribution:string):Promise<string|null>{
@@ -233,4 +291,22 @@ function slugify(value:string){
     .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
     .replace(/[^a-z0-9]+/g,'-')
     .replace(/^-+|-+$/g,'') || 'machine';
+}
+
+function extractSpecTable(html:string):Array<{key:string;value:string}>{
+  const out:Array<{key:string;value:string}>=[];
+  for(const t of html.matchAll(/<table[^>]*>([\s\S]*?)<\/table>/gi)){
+    const body=t[1] ?? '';
+    for(const r of body.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi)){
+      const row=r[1] ?? '';
+      const cells=[...row.matchAll(/<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/gi)]
+        .map(c=>(c[1] ?? '').replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim())
+        .filter(Boolean);
+      if(cells.length>=2){
+        out.push({key:cells[0] ?? '', value:cells.slice(1).join(' ')});
+      }
+    }
+    if(out.length)break;
+  }
+  return out.slice(0,12);
 }

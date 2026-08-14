@@ -55,10 +55,18 @@ export class PublicProductQuery {
                        and mr.status='PERMITTED'
                        and (mr.expires_at is null or mr.expires_at > now())
                   )
-                order by l.is_primary desc,l.sort_order,a.id limit 1) hero_key
+                order by l.is_primary desc,l.sort_order,a.id limit 1) hero_key,
+              offer.amount offer_amount,offer.currency offer_currency
          from catalog.product_model p
          join catalog.manufacturer m on m.id=p.manufacturer_id
          left join catalog.brand b on b.id=p.brand_id
+         left join lateral (
+           select min(po.amount) amount, min(po.currency) currency
+             from commerce.listing li2
+             join commerce.price_observation po on po.listing_id=li2.id
+            where li2.product_model_id=p.id and li2.status='ACTIVE'
+              and po.observed_at >= now() - interval '7 days'
+         ) offer on true
         where ${where.join(' and ')}
         order by p.id
         limit $${params.length}`,
@@ -71,6 +79,9 @@ export class PublicProductQuery {
       ...mapSummary(row),
       heroMedia: row.hero_key
         ? { url: await this.delivery.url(row.hero_key) }
+        : null,
+      offerFrom: row.offer_amount != null
+        ? { amount: Number(row.offer_amount), currency: row.offer_currency ?? 'USD' }
         : null,
     })));
     return {
