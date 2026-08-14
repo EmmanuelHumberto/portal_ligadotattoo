@@ -3,8 +3,8 @@ import {useRouter,useSearchParams} from 'next/navigation';
 import {useState} from 'react';
 import {track} from '../lib/analytics';
 
-export function MachineFilters({facets,path='/maquinas'}:{
-  facets:any;path?:string;
+export function MachineFilters({facets,path='/maquinas',showType=true}:{
+  facets:any;path?:string;showType?:boolean;
 }){
  const router=useRouter();const current=useSearchParams();
  const [draft,setDraft]=useState(()=>Object.fromEntries(current.entries()));
@@ -22,8 +22,8 @@ export function MachineFilters({facets,path='/maquinas'}:{
   <h2>Refinar</h2>
   <Select label="Marca" value={draft.manufacturer??''}
    values={facets.brands??[]} onChange={(v:string)=>set('manufacturer',v)}/>
-  <Select label="Tipo" value={draft.productType??''}
-   values={facets.types??[]} onChange={(v:string)=>set('productType',v)}/>
+  {showType&&<Select label="Tipo" value={draft.productType??''}
+   values={facets.types??[]} onChange={(v:string)=>set('productType',v)}/>}
   <button className="btn" onClick={apply}>Aplicar filtros</button>
   <button className="textButton" onClick={()=>router.push(path)}>
    Limpar filtros
