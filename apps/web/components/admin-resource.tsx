@@ -1,10 +1,11 @@
 import Link from 'next/link';
 import type {AdminApiResult} from '../lib/admin-api';
+import type {AdminApiStatus} from '../lib/admin-status';
 
 type Row=Record<string,unknown>;
 export type AdminColumn={key:string;label:string};
 
-export function AdminAccessState({status}:{status:401|403|502}){
+export function AdminAccessState({status}:{status:AdminApiStatus}){
  const loginUrl=process.env.ADMIN_LOGIN_URL;
  if(status===401)return <div className="card adminState">
   <span className="statusPill">Sessão necessária</span>
@@ -19,6 +20,18 @@ export function AdminAccessState({status}:{status:401|403|502}){
   <span className="statusPill warning">Acesso limitado</span>
   <h1>Permissão insuficiente</h1>
   <p>Sua sessão é válida, mas não possui a capacidade exigida por este módulo.</p>
+  <Link className="secondary" href="/admin">Voltar ao dashboard</Link>
+ </div>;
+ if(status===409)return <div className="card adminState">
+  <span className="statusPill warning">Conflito de versão</span>
+  <h1>O registro mudou</h1>
+  <p>Outra alteração foi aplicada ao mesmo item. Recarregue e tente novamente.</p>
+  <Link className="secondary" href="/admin">Voltar ao dashboard</Link>
+ </div>;
+ if(status===422)return <div className="card adminState">
+  <span className="statusPill warning">Validação</span>
+  <h1>Dados inválidos</h1>
+  <p>A requisição não passou na validação. Revise os campos informados.</p>
   <Link className="secondary" href="/admin">Voltar ao dashboard</Link>
  </div>;
  return <div className="card adminState">
@@ -36,17 +49,26 @@ export function AdminPageHeader({eyebrow,title,description}:{
  </header>;
 }
 
-export function AdminCollection({result,columns,empty='Nenhum registro encontrado.'}:{
+export function AdminCollection({result,columns,empty='Nenhum registro encontrado.',hrefFor}:{
  result:AdminApiResult<{items:Row[]}>;columns:AdminColumn[];empty?:string;
+ hrefFor?:(row:Row)=>string;
 }){
  if(!result.ok)return <AdminAccessState status={result.status}/>;
  if(!result.data.items.length)return <div className="card adminEmpty">{empty}</div>;
- return <div className="card adminTableWrap"><table className="adminTable">
-  <thead><tr>{columns.map(column=><th key={column.key}>{column.label}</th>)}</tr></thead>
-  <tbody>{result.data.items.map((row,index)=><tr key={String(row.id??index)}>
-   {columns.map(column=><td key={column.key}>{formatValue(row[column.key])}</td>)}
-  </tr>)}</tbody>
- </table></div>;
+  return <div className="card adminTableWrap"><table className="adminTable">
+   <thead><tr>
+    {columns.map(column=><th key={column.key}>{column.label}</th>)}
+    {hrefFor&&<th>Ações</th>}
+   </tr></thead>
+   <tbody>{result.data.items.map((row,index)=><tr key={String(row.id??index)}>
+    {columns.map((column,columnIndex)=><td key={column.key}>
+     {columnIndex===0&&hrefFor
+       ? <Link href={hrefFor(row)}>{formatValue(row[column.key])}</Link>
+       : formatValue(row[column.key])}
+    </td>)}
+    {hrefFor&&<td><Link className="primary" href={hrefFor(row)}>Abrir</Link></td>}
+   </tr>)}</tbody>
+  </table></div>;
 }
 
 export function Metric({label,value}:{label:string;value:unknown}){

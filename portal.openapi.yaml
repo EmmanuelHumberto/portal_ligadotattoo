@@ -294,6 +294,21 @@ paths:
             application/json:
               schema: {$ref: '#/components/schemas/Claim'}
         '422': {$ref: '#/components/responses/Validation'}
+  /admin/claims/{id}:
+    get:
+      tags: [Admin Knowledge]
+      security: [{oidc: []}]
+      operationId: getAdminClaim
+      x-required-capability: claim.read
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Claim detail
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Claim'}
+        '404': {$ref: '#/components/responses/NotFound'}
   /admin/canonical-proposals:
     post:
       tags: [Admin Knowledge]
@@ -432,6 +447,34 @@ paths:
           content:
             application/json:
               schema: {$ref: '#/components/schemas/AdminEditorialContent'}
+  /admin/editorial/{id}:
+    get:
+      tags: [Admin Editorial]
+      security: [{oidc: []}]
+      operationId: getAdminEditorial
+      x-required-capability: editorial.read
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Editorial content detail
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AdminEditorialContent'}
+        '404': {$ref: '#/components/responses/NotFound'}
+    delete:
+      tags: [Admin Editorial]
+      security: [{oidc: []}]
+      operationId: removeEditorial
+      x-required-capability: editorial.write
+      description: Remove permanentemente o conteúdo editorial.
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '200':
+          description: Removed
+        '409': {$ref: '#/components/responses/ConcurrentModification'}
   /admin/editorial/{id}/publish:
     post:
       tags: [Admin Editorial]
@@ -448,7 +491,24 @@ paths:
             application/json:
               schema: {$ref: '#/components/schemas/AdminEditorialContent'}
         '409': {$ref: '#/components/responses/ConcurrentModification'}
-
+  /admin/editorial/{id}/unpublish:
+    post:
+      tags: [Admin Editorial]
+      security: [{oidc: []}]
+      operationId: unpublishEditorial
+      x-required-capability: editorial.publish
+      description: Retira o conteúdo publicado do ar, retornando-o ao estado DRAFT.
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '200':
+          description: Unpublished (DRAFT)
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AdminEditorialContent'}
+        '409': {$ref: '#/components/responses/ConcurrentModification'}
+ 
   /admin/listings/{id}/prices:
     post:
       tags: [Admin Commerce]

@@ -55,15 +55,46 @@ export class OidcAccessTokenVerifier implements AccessTokenVerifier {
   }
 }
 
+const DEV_CAPABILITIES=[
+  'catalog.read','catalog.write',
+  'editorial.read','editorial.write','editorial.approve','editorial.publish',
+  'source.read','source.write','ingestion.read',
+  'media.read','media.review',
+  'commerce.read','commerce.manage',
+  'knowledge.read','knowledge.write','claim.read','claim.write',
+  'canonical.propose','canonical.decide',
+  'analytics.read',
+  'audit.read','operations.read','ops.read',
+  'ai.read','ai.config.read','ai.execution.read',
+  'service.read',
+  'laboratory.read',
+];
+
 export function createAccessTokenVerifier(
   env:NodeJS.ProcessEnv,
 ):AccessTokenVerifier {
   const config=readOidcVerifierConfig(env);
-  if(!config)return {
-    async verify() {
-      throw new Error('OIDC verifier is not configured');
-    },
-  };
+  if(!config){
+    const devToken=env.DEV_ADMIN_TOKEN?.trim();
+    if(devToken){
+      return {
+        async verify(token:string) {
+          if(token!==devToken) throw new Error('Invalid dev admin token');
+          return {
+            sub:'dev-admin',
+            actorId:'dev-admin',
+            capabilities:DEV_CAPABILITIES,
+            authenticationLevel:'dev',
+          };
+        },
+      };
+    }
+    return {
+      async verify() {
+        throw new Error('OIDC verifier is not configured');
+      },
+    };
+  }
   return new OidcAccessTokenVerifier(config);
 }
 

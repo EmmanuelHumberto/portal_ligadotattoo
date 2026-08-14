@@ -1,20 +1,21 @@
 # AR-20 — API Additive Gap Register
 
-AR-20 found administrative read contracts that are required for implementation but were not yet present in the AR-19 baseline.
+Status: RESOLVED (2026-08-13)
 
-Required additive endpoints:
+AR-20 identificou contratos de leitura administrativa ausentes no baseline
+AR-19. Estado de cada item após o fechamento do Módulo 1:
 
-- GET /admin/claims
-- GET /admin/claims/{id}
-- GET /admin/canonical-proposals
-- GET /admin/canonical-proposals/{id}
-- GET /admin/media
-- GET /admin/sources
-- GET /admin/ingestion/runs
-- GET /admin/editorial
-- GET /admin/editorial/{id}
-- GET /admin/listings
-- GET /admin/ai/executions
-- GET /admin/audit
+- GET /admin/claims — implementado (`KnowledgeController.claims`)
+- GET /admin/claims/{id} — implementado (`KnowledgeController.claimDetail`)
+- GET /admin/canonical-proposals — implementado (`KnowledgeController.proposals`)
+- GET /admin/canonical-proposals/{id} — implementado (`KnowledgeController.proposal`)
+- GET /admin/media — implementado (`MediaLibraryController.list`)
+- GET /admin/sources — implementado (`IngestionController.sources`)
+- GET /admin/ingestion/runs — implementado (`IngestionController.runs`)
+- GET /admin/editorial — implementado (`EditorialController.adminList`)
+- GET /admin/editorial/{id} — implementado (`EditorialController.adminDetail`)
+- GET /admin/listings — implementado (`CommerceController.listings`)
+- GET /admin/ai/executions — implementado (`AIAdminController.executions`)
+- GET /admin/audit — implementado (`OperationsController.audit`)
 
-These are not breaking changes. They must be added to OpenAPI before full Admin implementation.
+Todos os endpoints aditivos estão presentes. O contrato AR-20 está fechado.

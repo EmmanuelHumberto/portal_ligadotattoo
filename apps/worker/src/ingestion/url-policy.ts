@@ -19,7 +19,7 @@ export async function assertSafeTarget(
   url.hash='';
 
   const hosts=new Set(allowedHosts.map(normalizeHost));
-  if(!hosts.has(normalizeHost(url.hostname)))
+  if(hosts.size && !hosts.has(normalizeHost(url.hostname)))
     throw new Error('Target host is not registered');
 
   const addresses=await resolveHost(url.hostname);

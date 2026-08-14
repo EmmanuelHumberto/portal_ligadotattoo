@@ -5,7 +5,7 @@ export function productJsonLd(p:any,offers:any[]=[]){
  return compact({
   '@context':'https://schema.org','@type':'Product',
   name:p.name,description:p.summary??p.description,
-  image:(p.media??[]).map((x:any)=>absolute(x.url)),
+  image:imagesOf(p),
   brand:p.brand?.name?{'@type':'Brand',name:p.brand.name}:undefined,
   sku:p.sku??undefined,
   url:absolute(`/maquinas/${p.slug}`),
@@ -22,7 +22,7 @@ export function articleJsonLd(a:any){
   '@context':'https://schema.org','@type':a.contentType==='NEWS'?'NewsArticle':'Article',
   headline:a.title,description:a.summary,datePublished:a.publishedAt,
   dateModified:a.updatedAt??a.publishedAt,
-  image:(a.media??[]).map((x:any)=>absolute(x.url)),
+  image:imagesOf(a),
   mainEntityOfPage:absolute(`/${a.contentType==='NEWS'?'noticias':'blog'}/${a.slug}`),
   publisher:{'@type':'Organization',name:SITE.name,url:SITE.url},
  });
@@ -33,12 +33,16 @@ export function eventJsonLd(e:any){
   description:e.summary,startDate:e.startsAt,endDate:e.endsAt,
   eventStatus:'https://schema.org/EventScheduled',
   location:e.location?{
-   '@type':'Place',name:e.location.name,
-   address:e.location.address,
+   '@type':'Place',name:e.location.name,address:e.location.address,
   }:undefined,
-  image:(e.media??[]).map((x:any)=>absolute(x.url)),
+  image:imagesOf(e),
   url:absolute(`/eventos/${e.slug}`),
  });
+}
+function imagesOf(a:any){
+ const media=(a.media??[]).map((x:any)=>absolute(x.url));
+ if(media.length)return media;
+ return a.coverUrl?[absolute(a.coverUrl)]:undefined;
 }
 function availability(x:string){
  return x==='IN_STOCK'?'https://schema.org/InStock':

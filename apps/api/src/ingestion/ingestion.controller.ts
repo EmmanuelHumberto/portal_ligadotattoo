@@ -46,4 +46,30 @@ export class IngestionController {
   discoveries(@Query('status') status='NEW') {
     return this.query.discoveries(status);
   }
+
+  @Get('crawl-targets')
+  @RequireCapability('source.read')
+  targets(){ return this.query.targets(); }
+
+  @Post('crawl-targets')
+  @RequireCapability('source.write')
+  createTarget(@Body() body:any,@Actor() actor:any) {
+    return this.txm.run(async tx => {
+      const id=randomUUID();
+      await tx.query(
+        `insert into ingestion.crawl_target
+         (id,source_id,url,discovery_mode,schedule_key,max_bytes,status)
+         values ($1,$2,$3,$4,$5,$6,'ACTIVE')`,
+        [id, body.sourceId, body.url,
+         body.discoveryMode ?? 'EDITORIAL',
+         body.scheduleKey ?? null,
+         body.maxBytes ?? 5000000],
+      );
+      await this.audit.append({
+        actorId:actor.actorId,action:'crawl_target.created',
+        subjectType:'CrawlTarget',subjectId:id,
+      },tx);
+      return {id};
+    });
+  }
 }

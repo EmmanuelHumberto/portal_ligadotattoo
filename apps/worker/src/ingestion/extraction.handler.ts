@@ -44,13 +44,27 @@ export class ExtractionHandler {
 
   private async routeDiscovery(payload:any,s:any,x:any,fingerprint:string) {
     if (payload.discoveryMode==='EDITORIAL') {
-      await this.pool.query(
-        `insert into editorial.story_candidate
-         (id,source_id,source_snapshot_id,source_url,title,status,created_at)
-         values (gen_random_uuid(),$1,$2,$3,$4,'NEW',now())
-         on conflict (source_snapshot_id) do nothing`,
-        [payload.sourceId,s.id,s.url,x.title ?? s.url],
-      );
+      const latest=pickLatestArticle(x.links,s.url);
+      if (latest) {
+        await this.pool.query(
+          `insert into ops.job
+           (id,job_type,job_version,payload,status,available_at,deduplication_key)
+           values (gen_random_uuid(),'ingestion.collect_article',1,$1::jsonb,
+                   'PENDING',now(),$2)
+           on conflict (job_type,deduplication_key)
+             where deduplication_key is not null do nothing`,
+          [JSON.stringify({sourceId:payload.sourceId,url:latest}),
+           'article:'+latest],
+        );
+      } else {
+        await this.pool.query(
+          `insert into editorial.story_candidate
+           (id,source_id,source_snapshot_id,source_url,title,status,created_at)
+           values (gen_random_uuid(),$1,$2,$3,$4,'NEW',now())
+           on conflict (source_snapshot_id) do nothing`,
+          [payload.sourceId,s.id,s.url,x.title ?? s.url],
+        );
+      }
     }
     if (['CATALOG','MIXED'].includes(payload.discoveryMode)) {
       await this.pool.query(
@@ -64,4 +78,31 @@ export class ExtractionHandler {
       );
     }
   }
+}
+
+function pickLatestArticle(links:string[]|undefined,baseUrl:string):string|null{
+  if(!Array.isArray(links)||!links.length)return null;
+  let base:URL;
+  try{base=new URL(baseUrl);}catch{return null;}
+  for(const raw of links){
+    let abs:URL;
+    try{abs=new URL(raw,base);}catch{continue;}
+    if(abs.hostname!==base.hostname)continue;
+    if(abs.pathname==='/'||abs.pathname==='')continue;
+    if(isUtilityPath(abs.pathname))continue;
+    return abs.toString();
+  }
+  return null;
+}
+
+function isUtilityPath(path:string):boolean{
+  const seg=path.toLowerCase().split('/').filter(Boolean);
+  const skip=['login','register','signin','signup','about','contact','cart',
+    'shop','store','privacy','terms','policy','account','search','category',
+    'categories','tag','tags','page','author','faq','help','newsletter',
+    'subscribe','cookies','sitemap','rss','feed','wishlist','checkout',
+    'directory','directories','contest','contests','gallery','galleries',
+    'motion','video','videos','media','press','podcast','events','event',
+    'tattoo-artists','artists','studio','studios'];
+  return seg.some(s=>skip.includes(s));
 }

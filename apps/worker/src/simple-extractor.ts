@@ -17,7 +17,17 @@ export class SimpleContentExtractor implements ContentExtractor {
       .replace(/<[^>]+>/g,' ')
       .replace(/\s+/g,' ')
       .trim());
-    return {title,text,structured:{sourceUrl:input.url}};
+    const links=[...raw.matchAll(/<a[^>]+href=["']([^"']+)["']/gi)]
+      .map(m=>decodeEntities(m[1] ?? ''))
+      .filter(h=>h && !/^(#|javascript:|mailto:|tel:)/i.test(h));
+    const ogImage=/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i.exec(raw)?.[1]
+      ?? /<meta[^>]+name=["']twitter:image["'][^>]+content=["']([^"']+)["']/i.exec(raw)?.[1];
+    const images=[...raw.matchAll(/<img[^>]+src=["']([^"']+)["']/gi)]
+      .map(m=>decodeEntities(m[1] ?? ''))
+      .filter(h=>h && !/^(#|data:|javascript:)/i.test(h))
+      .filter(u=>!/(favicon|\.svg|\.gif|logo|brand|icon|tracking|pixel|ct\.pinterest|facebook\.com\/tr|google|profile|avatar)/i.test(u))
+      .map(u=>{try{return new URL(u,input.url).toString();}catch{return u;}});
+    return {title,text,links,structured:{sourceUrl:input.url,ogImage:ogImage?decodeEntities(ogImage):undefined,images}};
   }
 }
 

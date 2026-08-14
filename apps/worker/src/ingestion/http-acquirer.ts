@@ -81,9 +81,13 @@ function httpsRequest(
         accept:'text/html,application/json;q=0.9,*/*;q=0.1',
         'accept-encoding':'identity',
       },
-      lookup:(_hostname,_options,callback)=>{
-        const selected=target.addresses[0]!;
-        callback(null,selected.address,selected.family);
+      lookup:(_hostname,options,callback)=>{
+        if((options as {all?:boolean})?.all){
+          callback(null,target.addresses);
+        } else {
+          const selected=target.addresses[0]!;
+          callback(null,selected.address,selected.family);
+        }
       },
     },response=>{
       const encoding=singleHeader(response.headers['content-encoding']);

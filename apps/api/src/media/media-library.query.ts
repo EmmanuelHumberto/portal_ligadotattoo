@@ -9,7 +9,8 @@ export class MediaLibraryQuery {
   async list(input:{status?:string;rights?:string;limit?:number}) {
     const r=await this.pool.query(
       `select a.id,a.kind,a.mime_type,a.byte_size,a.alt_text,a.attribution,
-              a.rights_status,a.status,a.origin_type,a.created_at,a.updated_at,
+              a.rights_status,a.status,a.origin_type,a.version,
+              a.created_at,a.updated_at,
               mr.basis,mr.license_name,mr.expires_at,
               count(v.id)::int variant_count
          from media.media_asset a

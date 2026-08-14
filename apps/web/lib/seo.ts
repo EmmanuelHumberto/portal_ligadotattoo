@@ -33,3 +33,14 @@ export function filteredCatalogMetadata(search:Record<string,unknown>):Metadata{
   noindex:hasFilters,
  });
 }
+
+export function editorialMetadata(item:any,type:'NEWS'|'BLOG'|'EVENT'):Metadata{
+ const basePath=type==='NEWS'?'/noticias':type==='EVENT'?'/eventos':'/blog';
+ return pageMetadata({
+  title:item.title??'',
+  description:item.summary??'',
+  path:`${basePath}/${item.slug}`,
+  image:item.coverUrl,
+  type:'article',
+ });
+}

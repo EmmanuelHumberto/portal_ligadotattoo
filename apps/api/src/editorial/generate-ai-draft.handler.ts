@@ -5,6 +5,9 @@ import {
 } from '../ai/provider-hub.port';
 import { TransactionManager } from '../platform/transaction-manager';
 import { PostgresAuditRepository } from '../platform/audit.repository';
+import { CreateEditorialHandler } from './create-editorial.handler';
+import { StoryCandidateQuery } from './story-candidate.query';
+import type { EditorialDocument, EditorialType } from './editorial.types';
 
 @Injectable()
 export class GenerateAIDraftHandler {
@@ -12,28 +15,65 @@ export class GenerateAIDraftHandler {
     @Inject(AI_PROVIDER_HUB) private readonly ai:AIProviderHubPort,
     private readonly txm:TransactionManager,
     private readonly audit:PostgresAuditRepository,
+    private readonly createEditorial:CreateEditorialHandler,
+    private readonly candidates:StoryCandidateQuery,
   ) {}
 
   async execute(input:{
-    candidateId:string;sourceText:string;sourceUrl:string;
-    requestedType?:string;
-  },actorId:string) {
+    candidateId?:string; sourceText?:string; sourceUrl?:string;
+    requestedType?:string; actorId:string;
+  }) {
+    let title='';
+    let sourceUrl=input.sourceUrl ?? '';
+    let sourceText=input.sourceText ?? '';
+
+    let candidate:any=null;
+    if (input.candidateId) {
+      candidate=await this.candidates.candidateSource(input.candidateId);
+      if (!candidate) throw new Error('Story candidate not found');
+      title=String(candidate.title ?? '');
+      sourceUrl=String(candidate.source_url ?? '');
+      sourceText=sourceText || String(candidate.text_content ?? '');
+    }
+    if (!sourceText) throw new Error('Source text is required for AI draft');
+    if (sourceText.length>20_000)
+      sourceText=sourceText.slice(0,20_000)+'\n\n[source truncated for length]';
+
     const correlationId=randomUUID();
     const result=await this.ai.execute<any>({
       workload:'editorial.draft',
       correlationId,
       input:{
-        sourceText:input.sourceText,
-        sourceUrl:input.sourceUrl,
+        sourceText,
+        sourceUrl,
         requestedType:input.requestedType,
         instructions:[
+          'Write the entire article in Brazilian Portuguese (pt-BR).',
           'Do not invent technical specifications.',
           'Preserve source attribution.',
           'Mark uncertainty in draft text.',
-          'Return structured editorial blocks.',
+          'Return ONLY a JSON object with this exact schema: {"title": string, "subtitle": string|null, "summary": string, "body": {"version": 1, "blocks": [{"type": "heading"|"paragraph"|"quote"|"callout", "text": string, "level"?: number, "attribution"?: string}]}}. Write the article as a sequence of blocks; each block has a "type" and a "text".',
         ],
       },
     });
+
+    const draft=normalizeDraft(result.output, title || sourceUrl, input.requestedType);
+    if (candidate?.image_media_id) {
+      draft.body.blocks=[
+        {type:'image' as const, mediaId:String(candidate.image_media_id)},
+        ...draft.body.blocks,
+      ];
+    }
+
+    const content=await this.createEditorial.execute({
+      contentType:draft.contentType,
+      title:draft.title,
+      slug:draft.slug,
+      subtitle:draft.subtitle,
+      summary:draft.summary,
+      body:draft.body,
+      origin:'AI_ASSISTED',
+    }, input.actorId);
 
     await this.txm.run(async tx => {
       await tx.query(
@@ -44,21 +84,97 @@ export class GenerateAIDraftHandler {
         [result.providerKey,result.modelKey,result.latencyMs,correlationId],
       );
       await this.audit.append({
-        actorId,action:'editorial.ai_draft_generated',
-        subjectType:'StoryCandidate',subjectId:input.candidateId,
+        actorId:input.actorId,action:'editorial.ai_draft_generated',
+        subjectType:'StoryCandidate',subjectId:input.candidateId ?? content.id,
         metadata:{
-          providerKey:result.providerKey,modelKey:result.modelKey,
-          correlationId,
+          providerKey:result.providerKey,modelKey:result.modelKey,correlationId,
         },
       },tx);
+      if (input.candidateId) {
+        await tx.query(
+          `update editorial.story_candidate set status='DRAFTED' where id=$1`,
+          [input.candidateId],
+        );
+      }
     });
 
     return {
-      suggestion:result.output,
+      contentId:content.id,
+      content,
       provenance:{
-        providerKey:result.providerKey,modelKey:result.modelKey,
-        correlationId,
+        providerKey:result.providerKey,modelKey:result.modelKey,correlationId,
       },
     };
   }
+}
+
+function normalizeDraft(output:unknown,fallbackTitle:string,requestedType?:string){
+  const obj=(output && typeof output==='object') ? output as Record<string,any> : null;
+  const title=String(
+    obj?.title?.trim() ||
+    obj?.draftTitle?.trim() ||
+    fallbackTitle?.trim() ||
+    'Rascunho gerado por IA',
+  );
+  const rawBody=obj?.body;
+  let blocks:any[]=[];
+  if(Array.isArray(rawBody?.blocks))blocks=rawBody.blocks.flatMap(blockToBlocks);
+  else if(Array.isArray(obj?.blocks))blocks=obj.blocks.flatMap(blockToBlocks);
+  else if(Array.isArray(obj?.editorialBlocks))blocks=obj.editorialBlocks.flatMap(blockToBlocks);
+  const textOut=typeof output==='string' ? output : null;
+  return {
+    contentType:normalizeType(requestedType),
+    title,
+    slug:slugify(title),
+    subtitle:obj?.subtitle?.trim() || undefined,
+    summary:obj?.summary?.trim() || obj?.sourceAttribution?.trim()
+      || (textOut ? textOut.slice(0,240) : undefined),
+    body:{
+      version:1 as const,
+      blocks: blocks.length ? blocks
+        : [{type:'paragraph' as const,text:textOut ?? JSON.stringify(output ?? {})}],
+    } as EditorialDocument,
+  };
+}
+
+function blockToBlocks(b:any):any[]{
+  if(!b || typeof b!=='object')return [];
+  // Formato canônico: {type, text} (ou {type, content})
+  if(typeof b.type==='string' && (b.text!==undefined || b.content!==undefined)){
+    const out:any={type:b.type,text:String(b.text ?? b.content ?? '')};
+    if(b.level)out.level=Number(b.level);
+    if(b.attribution)out.attribution=String(b.attribution);
+    return [out];
+  }
+  // Formato editorialBlocks: {blockType, heading, content, quotes}
+  if(typeof b.blockType==='string'){
+    const out:any[]=[];
+    if(b.heading)out.push({type:'heading',level:2,text:String(b.heading)});
+    if(b.content)out.push({type:'paragraph',text:String(b.content)});
+    if(Array.isArray(b.quotes)){
+      for(const q of b.quotes){
+        if(q && typeof q==='object')
+          out.push({type:'quote',text:String((q as any).text ?? ''),
+            attribution:(q as any).author?String((q as any).author):undefined});
+      }
+    }
+    if(!out.length && b.text)out.push({type:'paragraph',text:String(b.text)});
+    return out;
+  }
+  return [];
+}
+
+function normalizeType(requestedType?:string):EditorialType{
+  const map:Record<string,EditorialType>={
+    NEWS:'NEWS',BLOG:'BLOG',EVENT:'EVENT',
+    TECHNICAL_ARTICLE:'TECHNICAL_ARTICLE',NOTICE:'NOTICE',
+  };
+  return map[String(requestedType ?? '').toUpperCase()] ?? 'NEWS';
+}
+
+function slugify(value:string){
+  return value.toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-z0-9]+/g,'-')
+    .replace(/^-+|-+$/g,'') || 'ai-draft';
 }

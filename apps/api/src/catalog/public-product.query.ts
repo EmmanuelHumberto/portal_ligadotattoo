@@ -131,18 +131,22 @@ export class PublicProductQuery {
       id:m.id,kind:m.kind,url:await this.delivery.url(m.delivery_storage_key),
       alt:m.alt_text,attribution:m.attribution,
     })));
+    const specFacts = facts.rows.filter(f =>
+      !['summary','description'].includes(f.property_key));
+    const summaryFact = facts.rows.find(f => f.property_key === 'summary');
+    const descriptionFact = facts.rows.find(f => f.property_key === 'description');
     return {
       ...mapSummary(row),
       machineType: row.product_type_key,
-      summary: null,
-      description: null,
-      canonicalSpecifications: facts.rows.map(f => ({
+      summary: summaryFact ? String(summaryFact.value) : null,
+      description: descriptionFact ? String(descriptionFact.value) : null,
+      canonicalSpecifications: specFacts.map(f => ({
         key: f.property_key,
         name: humanize(f.property_key),
         value: f.value,
         unit: f.unit,
       })),
-      specifications: facts.rows.map(f => ({
+      specifications: specFacts.map(f => ({
         key: f.property_key,
         label: humanize(f.property_key),
         value: formatFact(f.value, f.unit),
@@ -216,6 +220,12 @@ function formatFact(value: unknown, unit: string | null) {
   return unit ? `${text} ${unit}` : text;
 }
 
+const LABELS:Record<string,string>={
+  power_supply:'Fonte',voltage_range:'Tensão',rpm:'RPM (velocidade)',
+  motor_type:'Tipo de motor',stroke:'Curso',weight:'Peso',
+  accessories:'Acessórios',summary:'Resumo',description:'Descrição',
+};
+
 function humanize(key: string) {
-  return key.replaceAll('_',' ').replace(/\b\w/g, c => c.toUpperCase());
+  return LABELS[key] ?? key.replaceAll('_',' ').replace(/\b\w/g, c => c.toUpperCase());
 }

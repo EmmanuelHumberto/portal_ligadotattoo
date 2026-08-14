@@ -21,6 +21,18 @@ export class KnowledgeQuery {
     return {items:r.rows};
   }
 
+  async claimById(id:string) {
+    const r=await this.pool.query(
+      `select id,subject_type,subject_id,property_key,value,claimant_type,
+              claimant_id,source_snapshot_id,source_url,observed_at,
+              confidence,status,version,created_at
+         from knowledge.claim
+        where id=$1`,
+      [id],
+    );
+    return r.rowCount ? r.rows[0] : null;
+  }
+
   async proposals(status='PENDING',limit=50) {
     const r=await this.pool.query(
       `select id,subject_type,subject_id,property_key,proposed_value,

@@ -23,6 +23,14 @@ export class KnowledgeController {
     return this.query.claims({status,subjectId});
   }
 
+  @Get('claims/:id')
+  @RequireCapability('claim.read')
+  async claimDetail(@Param('id') id:string) {
+    const result=await this.query.claimById(id);
+    if (!result) throw new NotFoundException('Claim not found');
+    return result;
+  }
+
   @Post('claims')
   @RequireCapability('claim.write')
   async claim(@Body() body:any,@Actor() actor:any) {

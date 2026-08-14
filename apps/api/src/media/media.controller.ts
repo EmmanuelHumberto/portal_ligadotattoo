@@ -1,13 +1,17 @@
 import {
-  Body,Controller,Param,Post,UploadedFile,UseInterceptors,
+  Body,Controller,Get,Inject,NotFoundException,Param,Post,
+  UploadedFile,UseInterceptors,
 } from '@nestjs/common';
 import {FileInterceptor} from '@nestjs/platform-express';
 import { randomUUID } from 'node:crypto';
+import { Pool } from 'pg';
 import {Actor} from '../iam/actor.decorator';
 import { RequireCapability } from '../iam/require-capability.decorator';
+import { PG_POOL } from '../platform/database.module';
 import { TransactionManager } from '../platform/transaction-manager';
 import { MediaAsset } from './media.domain';
 import { MediaRepository } from './media.repository';
+import { MEDIA_DELIVERY,MediaDeliveryPort } from './media-storage.port';
 import {UploadMediaHandler} from './upload-media.handler';
 
 @Controller('admin/media')
@@ -16,6 +20,8 @@ export class MediaController {
     private readonly txm: TransactionManager,
     private readonly media: MediaRepository,
     private readonly uploads:UploadMediaHandler,
+    @Inject(PG_POOL) private readonly pool:Pool,
+    @Inject(MEDIA_DELIVERY) private readonly delivery:MediaDeliveryPort,
   ) {}
 
   @Post('upload')
@@ -46,5 +52,15 @@ export class MediaController {
     return this.txm.run(tx =>
       this.media.updateRights(id,body.expectedVersion,body.rightsStatus,tx)
     );
+  }
+
+  @Get(':id/url')
+  @RequireCapability('media.read')
+  async url(@Param('id') id:string) {
+    const r=await this.pool.query(
+      `select storage_key from media.media_asset where id=$1`,[id],
+    );
+    if(!r.rowCount) throw new NotFoundException('Media not found');
+    return {url: await this.delivery.url(r.rows[0].storage_key)};
   }
 }

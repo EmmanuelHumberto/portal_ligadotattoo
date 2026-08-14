@@ -39,4 +39,16 @@ export class IngestionQuery {
     );
     return {items:r.rows};
   }
+
+  async targets(limit=100) {
+    const r=await this.pool.query(
+      `select t.id,t.source_id,s.name source_name,t.url,t.discovery_mode,
+              t.schedule_key,t.status,t.last_crawled_at,t.created_at
+         from ingestion.crawl_target t
+         join ingestion.source s on s.id=t.source_id
+        order by t.created_at desc limit $1`,
+      [Math.min(Math.max(limit,1),200)],
+    );
+    return {items:r.rows};
+  }
 }

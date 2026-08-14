@@ -25,6 +25,7 @@ export class DurableScheduler {
       let count=0;
       count+=await this.enqueueEditorial(client);
       count+=await this.enqueueIngestion(client);
+      count+=await this.enqueueAutoDraft(client);
       count+=await this.enqueueMaintenance(client);
       await this.pruneCompletedJobs(client);
       await client.query('COMMIT');
@@ -78,6 +79,32 @@ export class DurableScheduler {
              where j.job_type='ingestion.run_target'
                and j.status in ('PENDING','RUNNING','RETRY')
                and j.payload->>'targetId'=t.id::text
+          )
+       on conflict (job_type,deduplication_key)
+         where deduplication_key is not null do nothing`,
+    );
+    return result.rowCount??0;
+  }
+
+  private async enqueueAutoDraft(client:PoolClientLike) {
+    const flag=await client.query(
+      `select value from editorial.pipeline_setting where key='auto_draft_enabled'`,
+    );
+    if(flag.rowCount && flag.rows[0].value!=='true') return 0;
+
+    const result=await client.query(
+      `insert into ops.job
+       (id,job_type,job_version,payload,status,available_at,deduplication_key)
+       select gen_random_uuid(),'editorial.auto_draft',1,
+              jsonb_build_object('candidateId',sc.id),'PENDING',now(),
+              'auto-draft:'||sc.id::text
+         from editorial.story_candidate sc
+        where sc.status in ('NEW','QUALIFIED')
+          and not exists (
+            select 1 from ops.job j
+             where j.job_type='editorial.auto_draft'
+               and j.payload->>'candidateId'=sc.id::text
+               and j.status in ('PENDING','RUNNING','RETRY')
           )
        on conflict (job_type,deduplication_key)
          where deduplication_key is not null do nothing`,

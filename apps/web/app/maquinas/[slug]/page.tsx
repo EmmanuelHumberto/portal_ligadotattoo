@@ -1,6 +1,22 @@
+import type {Metadata} from 'next';
 import {api} from '../../../lib/api';
 import {MediaGallery} from '../../../components/media-gallery';
 import {SiteHeader} from '../../../components/site-header';
+import {JsonLd} from '../../../components/json-ld';
+import {productJsonLd} from '../../../lib/structured-data';
+import {pageMetadata} from '../../../lib/seo';
+
+export async function generateMetadata({params}:{params:Promise<{slug:string}>}):Promise<Metadata>{
+ const {slug}=await params;
+ const p=await api(`/public/products/${slug}`,{cache:'no-store'}).catch(()=>null);
+ if(!p)return pageMetadata({title:'Máquina',description:'Máquina de tatuagem.',path:`/maquinas/${slug}`});
+ return pageMetadata({
+  title:p.name,
+  description:p.summary??p.description??'Máquina de tatuagem.',
+  path:`/maquinas/${p.slug}`,
+  image:p.heroMedia?.url,
+ });
+}
 
 export default async function Product({params}:{params:Promise<{slug:string}>}){
  const {slug}=await params;
@@ -22,5 +38,6 @@ export default async function Product({params}:{params:Promise<{slug:string}>}){
   <section className="detailGrid"><article className="card content"><h2>Visão geral</h2><p>{p.description}</p></article>
    <aside id="ofertas" className="card offers"><h2>Ofertas</h2>{offers.items?.map((o:any)=><a key={o.listingId} href={o.outboundUrl}><b>{o.seller}</b><span>{o.currency} {o.amount}</span></a>)}</aside>
   </section>
- </main></>
+  <JsonLd data={productJsonLd(p,offers.items??[])}/>
+ </main></>;
 }

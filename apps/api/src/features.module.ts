@@ -9,6 +9,7 @@ import { QualityQuery } from './analytics/quality.query';
 import { CatalogModule } from './catalog/catalog.module';
 import { CommercePublicQuery } from './catalog/commerce-public.query';
 import { ProductController } from './catalog/catalog.controller.v2';
+import { AdminProductQuery } from './catalog/admin-product.query';
 import { CreateProductHandler } from './catalog/create-product.handler';
 import { ProductRepository } from './catalog/product.repository';
 import { PublicCatalogController } from './catalog/public-catalog.controller';
@@ -26,7 +27,12 @@ import { EditorialController } from './editorial/editorial.controller';
 import { EditorialQuery } from './editorial/editorial.query';
 import { EditorialRepository } from './editorial/editorial.repository';
 import { GenerateAIDraftHandler } from './editorial/generate-ai-draft.handler';
+import { StoryCandidateQuery } from './editorial/story-candidate.query';
+import { InternalEditorialController } from './editorial/internal-editorial.controller';
+import { PipelineConfigController } from './editorial/pipeline-config.controller';
+import { PipelineConfigRepository } from './editorial/pipeline-config.repository';
 import { EditorialWorkflowHandler } from './editorial/review-publish.handler';
+import { MeController } from './iam/me.controller';
 import { IngestionController } from './ingestion/ingestion.controller';
 import { IngestionQuery } from './ingestion/ingestion.query';
 import { SourceRepository } from './ingestion/source.repository';
@@ -55,6 +61,10 @@ import { PostgresAuditRepository } from './platform/audit.repository';
 import { OutboxRepository } from './platform/outbox.repository';
 import { PublicSearchController } from './search/public-search.controller';
 import { PublicSearchQuery } from './search/public-search.query';
+import { ServiceController } from './service/service.controller';
+import { ServiceQuery } from './service/service.query';
+import { LaboratoryController } from './laboratory/laboratory.controller';
+import { LaboratoryQuery } from './laboratory/laboratory.query';
 
 const controllers = [
   ProductController,
@@ -63,6 +73,8 @@ const controllers = [
   PublicManufacturerController,
   KnowledgeController,
   EditorialController,
+  InternalEditorialController,
+  PipelineConfigController,
   IngestionController,
   CommerceController,
   MediaController,
@@ -71,12 +83,16 @@ const controllers = [
   OperationsController,
   AnalyticsController,
   AdminIntelligenceController,
+  MeController,
+  ServiceController,
+  LaboratoryController,
 ];
 
 const providers = [
   OutboxRepository,
   PostgresAuditRepository,
   ProductRepository,
+  AdminProductQuery,
   CreateProductHandler,
   PublicProductQuery,
   PublicManufacturerQuery,
@@ -92,6 +108,8 @@ const providers = [
   EditorialWorkflowHandler,
   EditorialQuery,
   GenerateAIDraftHandler,
+  StoryCandidateQuery,
+  PipelineConfigRepository,
   SourceRepository,
   IngestionQuery,
   CommerceRepository,
@@ -111,6 +129,8 @@ const providers = [
   ExperimentService,
   FunnelQuery,
   QualityQuery,
+  ServiceQuery,
+  LaboratoryQuery,
   {
     provide:MEDIA_STORAGE,
     useFactory:()=>createMediaStorage(process.env),

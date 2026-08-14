@@ -20,6 +20,8 @@ export async function EditorialListing(props:{
   <section className="grid editorialListing">
    {(data.items??[]).map((item:any)=><article className="card editorialItem"
     key={item.id}><p className="accent">{label(item.contentType)}</p>
+    {item.coverUrl&&<Link href={`${props.basePath}/${item.slug}`}>
+     <img className="editorialCover" src={item.coverUrl} alt={item.title} loading="lazy"/></Link>}
     <h2><Link href={`${props.basePath}/${item.slug}`}>{item.title}</Link></h2>
     <p className="muted">{item.summary}</p>
     {item.event?.startsAt&&<time dateTime={item.event.startsAt}>
@@ -55,6 +57,7 @@ export async function EditorialDetail(props:{
 
 function EditorialBody({body}:{body:any}){
  return <div className="editorialBody">{(body?.blocks??[]).map((block:any,index:number)=>{
+  if(block.type==='image')return block.url?<img key={index} className="editorialImage" src={block.url} alt={block.caption??block.alt??'Imagem'} loading="lazy"/>:null;
   if(block.type==='heading')return block.level===3?<h3 key={index}>{block.text}</h3>:<h2 key={index}>{block.text}</h2>;
   if(block.type==='quote')return <blockquote key={index}>{block.text}</blockquote>;
   if(block.type==='callout')return <aside className="callout" key={index}>

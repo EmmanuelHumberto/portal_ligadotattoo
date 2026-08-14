@@ -81,6 +81,40 @@ export class EditorialWorkflowHandler {
     });
   }
 
+  remove(id:string,expectedVersion:number,actorId:string) {
+    return this.txm.run(async tx => {
+      const row=await this.repo.lock(id,tx);
+      assertVersion(row,expectedVersion);
+      await tx.query(`delete from editorial.content where id=$1`,[id]);
+      await this.audit.append({
+        actorId,action:'editorial.removed',subjectType:'EditorialContent',
+        subjectId:id,
+      },tx);
+      return {removed:true};
+    });
+  }
+
+  unpublish(id:string,expectedVersion:number,actorId:string) {
+    return this.txm.run(async tx => {
+      const row=await this.repo.lock(id,tx);
+      assertVersion(row,expectedVersion);
+      if (row.status !== 'PUBLISHED')
+        throw new Error('Only published content can be unpublished');
+      const r=await tx.query(
+        `update editorial.content
+            set status='DRAFT',published_at=null,updated_at=now(),
+                version=version+1
+          where id=$1 and version=$2 returning *`,
+        [id,expectedVersion],
+      );
+      await this.audit.append({
+        actorId,action:'editorial.unpublished',
+        subjectType:'EditorialContent',subjectId:id,
+      },tx);
+      return r.rows[0];
+    });
+  }
+
   private transition(
     id:string,expectedVersion:number,from:string,to:string,
     action:string,actorId:string,reason?:string,

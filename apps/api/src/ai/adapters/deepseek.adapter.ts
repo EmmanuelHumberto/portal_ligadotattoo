@@ -19,6 +19,7 @@ export class DeepSeekAdapter implements AIProviderAdapter {
         model:r.model.providerModelId,messages,
         temperature:r.temperature,
         max_tokens:r.maxOutputTokens,
+        reasoning_effort:'low',
         response_format:r.responseFormat==='json'
           ? {type:'json_object'}:undefined,
       }),
