@@ -38,5 +38,11 @@ function decodeEntities(value:string) {
     .replace(/&lt;/gi,'<')
     .replace(/&gt;/gi,'>')
     .replace(/&quot;/gi,'"')
-    .replace(/&#39;/gi,"'");
+    .replace(/&#39;/gi,"'")
+    .replace(/&ndash;/gi,'–')
+    .replace(/&mdash;/gi,'—')
+    .replace(/&rsquo;/gi,'’')
+    .replace(/&lsquo;/gi,'‘')
+    .replace(/&ldquo;/gi,'“')
+    .replace(/&rdquo;/gi,'”');
 }

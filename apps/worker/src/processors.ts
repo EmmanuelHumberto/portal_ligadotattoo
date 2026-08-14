@@ -23,6 +23,7 @@ import {CanonicalChangeHandler} from './projections/canonical-change.handler';
 import {ProductSearchProjectionHandler} from './projections/product-search.handler';
 import {SimpleContentExtractor} from './simple-extractor';
 import {ManufacturerMediaHandler} from './commerce/manufacturer-media.handler';
+import {CatalogDiscoveryHandler} from './commerce/catalog-discovery.handler';
 
 export type ProcessorContext={signal:AbortSignal};
 export type Processor={key:string;tick(ctx:ProcessorContext):Promise<void>};
@@ -76,6 +77,7 @@ export function createRuntimeProcessors(
    new CollectArticleHandler(pool,new HttpAcquirer(),new SimpleContentExtractor(),s3,bucket,
     env.OBJECT_STORAGE_AUTO_CREATE_BUCKET==='true'),
    new ManufacturerMediaHandler(pool,new HttpAcquirer(),new SimpleContentExtractor(),s3,bucket),
+   new CatalogDiscoveryHandler(pool,new HttpAcquirer(),new SimpleContentExtractor(),s3,bucket),
   {
    type:'ingestion.run_target',
    handle:(payload:unknown)=>ingestion.runTarget(asRecord(payload).targetId as string),

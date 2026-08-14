@@ -37,7 +37,22 @@ export class PublicProductQuery {
     const r = await this.pool.query(
       `select p.id,p.slug,p.name,p.product_type_key,p.lifecycle,
               m.name manufacturer_name,m.slug manufacturer_slug,
-              b.name brand_name
+              b.name brand_name,
+              (select coalesce(vh.storage_key,vc.storage_key,vt.storage_key,a.storage_key)
+                 from media.media_link l
+                 join media.media_asset a on a.id=l.media_asset_id
+                 left join media.media_variant vh on vh.media_asset_id=a.id and vh.variant_key='hero'
+                 left join media.media_variant vc on vc.media_asset_id=a.id and vc.variant_key='card'
+                 left join media.media_variant vt on vt.media_asset_id=a.id and vt.variant_key='thumb'
+                where l.subject_type='PRODUCT_MODEL' and l.subject_id=p.id
+                  and a.status='ACTIVE' and a.rights_status='PERMITTED'
+                  and exists (
+                    select 1 from media.media_rights mr
+                     where mr.media_asset_id=a.id and mr.is_current=true
+                       and mr.status='PERMITTED'
+                       and (mr.expires_at is null or mr.expires_at > now())
+                  )
+                order by l.is_primary desc,l.sort_order,a.id limit 1) hero_key
          from catalog.product_model p
          join catalog.manufacturer m on m.id=p.manufacturer_id
          left join catalog.brand b on b.id=p.brand_id
@@ -49,8 +64,14 @@ export class PublicProductQuery {
 
     const hasMore = r.rows.length > limit;
     const rows = r.rows.slice(0, limit);
+    const items = await Promise.all(rows.map(async row => ({
+      ...mapSummary(row),
+      heroMedia: row.hero_key
+        ? { url: await this.delivery.url(row.hero_key) }
+        : null,
+    })));
     return {
-      items: rows.map(mapSummary),
+      items,
       meta: {
         hasMore,
         nextCursor: hasMore ? rows.at(-1)?.id ?? null : null,
