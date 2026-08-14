@@ -58,7 +58,7 @@ function AutoDraftToggle({enabled}:{enabled:boolean}){
     </button>
    </AdminActionForm>
    <AdminActionForm action={runAutoDraft}>
-    <button className="secondary" type="submit">Gerar rascunhos agora</button>
+    <button className="primary" type="submit">Gerar rascunhos agora</button>
    </AdminActionForm>
   </div>
  </div>;
