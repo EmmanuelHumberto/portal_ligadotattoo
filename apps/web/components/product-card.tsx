@@ -2,7 +2,7 @@ import {PortalImage} from './portal-image';
 
 export function ProductCard({p}:{p:any}){
  return <article className="card productCard">
-  <div className="media">{p.image&&<PortalImage src={p.image} alt=""
+  <div className="media">{(p.heroMedia?.url||p.image)&&<PortalImage src={p.heroMedia?.url||p.image} alt=""
     width={480} height={420} unoptimized/>}</div>
   <div className="body">
    {p.badge&&<span className="badge">{p.badge}</span>}
