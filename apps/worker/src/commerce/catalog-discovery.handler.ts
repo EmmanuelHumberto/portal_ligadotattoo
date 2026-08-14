@@ -154,15 +154,17 @@ export class CatalogDiscoveryHandler implements JobHandler {
       }
     }
 
-    const hasFact=await this.pool.query(
-      `select 1 from knowledge.canonical_fact
-        where subject_type='PRODUCT_MODEL' and subject_id=$1 limit 1`,[productId],
-    );
-    if(!hasFact.rowCount){
-      const desc=cleanShopifyBody(p.body_html);
-      if(desc && desc.length>20){
-        await this.recordFact(productId,'description',desc.slice(0,600),null,url);
+    const desc=cleanShopifyBody(p.body_html);
+    if(desc && desc.length>20){
+      const hasDesc=await this.pool.query(
+        `select 1 from knowledge.canonical_fact
+          where subject_type='PRODUCT_MODEL' and subject_id=$1
+            and property_key='description' limit 1`,[productId],
+      );
+      if(!hasDesc.rowCount){
+        await this.recordFact(productId,'description',desc.slice(0,3000),null,url);
       }
+      await this.recordSpecs(productId,desc,url);
     }
     return true;
   }
@@ -235,29 +237,35 @@ export class CatalogDiscoveryHandler implements JobHandler {
         );
       }
     }
-    const hasFact=await this.pool.query(
-      `select 1 from knowledge.canonical_fact
-        where subject_type='PRODUCT_MODEL' and subject_id=$1 limit 1`,[productId],
-    );
-    if(!hasFact.rowCount){
-      try { await this.recordContent(productId,html,url); } catch {}
-    }
+    try { await this.recordContent(productId,html,url); } catch {}
     return true;
   }
 
   private async recordContent(productId:string,html:string,sourceUrl:string):Promise<void>{
     const metaDesc=extractMetaDescription(html);
-    if(metaDesc && metaDesc.length>20){
-      await this.recordFact(productId,'description',metaDesc.slice(0,600),null,sourceUrl);
-    } else {
-      const text=cleanPageText(html);
-      if(text.length>30){
-        await this.recordFact(productId,'description',text.slice(0,600),null,sourceUrl);
+    const pageText=cleanPageText(html);
+    const desc=(metaDesc && metaDesc.length>20) ? metaDesc : (pageText.length>30 ? pageText : '');
+    if(desc){
+      const hasDesc=await this.pool.query(
+        `select 1 from knowledge.canonical_fact
+          where subject_type='PRODUCT_MODEL' and subject_id=$1
+            and property_key='description' limit 1`,[productId],
+      );
+      if(!hasDesc.rowCount){
+        await this.recordFact(productId,'description',desc.slice(0,3000),null,sourceUrl);
       }
+      await this.recordSpecs(productId,desc,sourceUrl);
     }
-    for(const s of extractSpecTable(html)){
-      const key=slugify(s.key);
-      if(key && key.length<40 && s.value){
+  }
+
+  private async recordSpecs(productId:string,text:string,sourceUrl:string):Promise<void>{
+    for(const s of extractTechnicalSpecs(text)){
+      const key=s.key;
+      const existing=await this.pool.query(
+        `select 1 from knowledge.canonical_fact
+          where subject_type='PRODUCT_MODEL' and subject_id=$1 and property_key=$2 limit 1`,[productId,key],
+      );
+      if(!existing.rowCount){
         await this.recordFact(productId,key,s.value,null,sourceUrl);
       }
     }
@@ -375,7 +383,8 @@ function classifyProductType(name:string,productType?:string,tags?:string[]):str
   if(/battery|batteries|powerbolt|power bolt/i.test(n) && !/machine|pen|rotary/i.test(n)) return 'BATTERY';
   if(/\bcoil\b/i.test(`${n} ${t} ${g}`) && !/cores?\b|washers?\b|\bcoils\b/i.test(n)) return 'COIL';
   if(/rotary/i.test(`${n} ${g}`)) return 'ROTARY';
-  if(/machine|tattoo pen|wireless pen|power pen|pen gun|tattoo gun|tattoo kit|\bpmu\b|wand|shader|packer|liner/i.test(n)) return 'PEN';
+  if(/machine|tattoo pen|wireless pen|power pen|pen gun|tattoo gun|tattoo kit|\bpmu\b|wand|shader|packer|liner|\bpen\b/i.test(n)
+     && !/grip|torsion|tube|needle|plier|pencil/i.test(n)) return 'PEN';
   if(/\bink\b|tinta|pigment|colour|color|greywash|graywash/i.test(n)
      && !/cup|cap|grip|cartridge|needle|cable|rca/i.test(n)) return 'INK';
   return 'ACCESSORY';
@@ -447,3 +456,76 @@ function extractSpecTable(html:string):Array<{key:string;value:string}>{
   }
   return out.slice(0,12);
 }
+
+function extractTechnicalSpecs(text:string):Array<{key:string;value:string}>{
+  const t=text.replace(/\s+/g,' ').trim();
+  if(!t)return [];
+  const out:Array<{key:string;value:string}>=[];
+  const seen=new Set<string>();
+  const add=(key:string,value:string|undefined)=>{
+    const v=(value ?? '').trim();
+    if(v && !seen.has(key)){ seen.add(key); out.push({key,value:v}); }
+  };
+  let m:RegExpExecArray|null;
+
+  // stroke (curso): "4 mm stroke", "stroke 2.4-4.2mm", "adjustable stroke 2.4-4.2 mm"
+  m=/stroke[^.\n]{0,60}?(\d+(?:[.,]\d+)?)(?:\s*(?:-|–|—|to|a)\s*(\d+(?:[.,]\d+)?))?\s*mm/i.exec(t);
+  if(!m)m=/(\d+(?:[.,]\d+)?)(?:\s*(?:-|–|—|to)\s*(\d+(?:[.,]\d+)?))?\s*mm\s*(?:adjustable\s*)?stroke/i.exec(t);
+  if(m)add('stroke',m[2]?`${m[1]}–${m[2]} mm`:`${m[1]} mm`);
+
+  // voltage (tensão): "5-10 volts", "8-12V", "5.5 to 6.5 hours of power" (não)
+  m=/(\d+(?:[.,]\d+)?)(?:\s*(?:-|–|—|to|and)\s*(\d+(?:[.,]\d+)?))?\s*(?:v|volts?)\b/i.exec(t);
+  if(m)add('voltage_range',m[2]?`${m[1]}–${m[2]} V`:`${m[1]} V`);
+
+  // motor type
+  m=/(coreless|brushless|swiss(?:-made)?\s+motor|maxon\s+motor|faubion\s+motor|dc\s+motor|swiss\s+motor)/i.exec(t);
+  if(m)add('motor_type',m[1]);
+  else {
+    m=/motor[^.\n]{0,40}?(coreless|brushless)/i.exec(t);
+    if(m)add('motor_type',m[1]);
+  }
+
+  // rpm
+  m=/(\d[\d,.]*)\s*(?:rpm|rotations?\s*(?:per|a)\s*minute)/i.exec(t);
+  if(m)add('rpm',`${m[1]} RPM`);
+
+  // battery capacity
+  m=/(\d+)\s*mah\b/i.exec(t);
+  if(m)add('battery_capacity',`${m[1]} mAh`);
+
+  // battery model (18500, 18650, 21700...)
+  m=/\b(1[0-9]{4}|2[0-9]{4})\b\s*(?:batter(?:y|ies))?/i.exec(t);
+  if(m && /batter/i.test(t))add('battery',m[1]);
+
+  // weight
+  m=/weight[^.\n]{0,40}?(\d+(?:[.,]\d+)?)\s*(g|oz|grams?|ounces?)\b/i.exec(t);
+  if(!m)m=/(\d+(?:[.,]\d+)?)\s*(g|oz|grams?|ounces?)\b/i.exec(t);
+  if(m)add('weight',`${m[1]} ${m[2]}`);
+
+  // material
+  m=/(aircraft(?:-grade)?\s*(?:aluminum|aluminium)|aluminum|aluminium|titanium|brass|stainless\s*steel|copper|aerospace\s*(?:aluminum|aluminium))\b/i.exec(t);
+  if(m)add('material',m[1]);
+
+  // drive / transmission
+  m=/(direct\s*drive|swash\s*drive|swashdrive|gear\s*drive|linear\s*(?:rotary|drive)|cam\s*drive)/i.exec(t);
+  if(m)add('drive',m[1]);
+
+  // stroke adjustability
+  if(/adjustable\s*(?:stroke|course)/i.test(t))add('stroke_type','Ajustável');
+  else if(/fixed\s*(?:stroke|course)/i.test(t))add('stroke_type','Fixo');
+
+  // screen / display
+  m=/(touch\s*screen|lcd|oled|led\s*display|digital\s*display|tft)/i.exec(t);
+  if(m)add('screen',m[1]);
+
+  // connectivity
+  m=/(bluetooth|usb-c|usb\s*type-c|type-c|wireless|wifi|wi-fi)\b/i.exec(t);
+  if(m)add('connectivity',m[1]);
+
+  // runtime / charge time
+  m=/(\d+(?:[.,]\d+)?)\s*(?:hours?|hrs?|h)\s*(?:charge|charging|runtime|of\s*power|battery\s*life)/i.exec(t);
+  if(m)add('runtime',`${m[1]} h`);
+
+  return out;
+}
+
