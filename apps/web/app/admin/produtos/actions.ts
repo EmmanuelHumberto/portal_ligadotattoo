@@ -2,6 +2,7 @@
 
 import {revalidatePath} from 'next/cache';
 import {adminMutate,adminUpload} from '../../../lib/admin-api';
+import {allSpecFields} from '../../../lib/spec-schema';
 import type {ActionResult} from '../../../lib/admin-action';
 
 export async function createProduct(
@@ -41,24 +42,15 @@ export async function saveProductSpecs(
 ):Promise<ActionResult>{
  const id=String(formData.get('id')??'').trim();
  if(!id)return {ok:false,status:422};
+ const type=String(formData.get('productType')??'').trim();
  const summary=String(formData.get('summary')??'').trim();
  const description=String(formData.get('description')??'').trim();
-  const specFields:Array<[string,string|null]>=[
-   ['power_supply','power_supply_unit'],
-   ['voltage_range','voltage_range_unit'],
-   ['rpm','rpm_unit'],
-   ['motor_type',null],
-   ['stroke','stroke_unit'],
-   ['weight','weight_unit'],
-   ['accessories',null],
-  ];
-  const specs=specFields.map(([key,unitField])=>{
-  const value=String(formData.get(key)??'').trim();
-  if(!value)return null;
-  const unit=unitField?String(formData.get(unitField)??'').trim()||null:null;
-  return {key,value,unit};
- }).filter(Boolean) as Array<{key:string;value:string;unit:string|null}>;
-
+ const specs:Array<{key:string;value:string;unit:string|null}>=[];
+ for(const field of allSpecFields(type||'ACCESSORY')){
+  const value=String(formData.get(field.key)??'').trim();
+  if(!value)continue;
+  specs.push({key:field.key,value,unit:field.unit??null});
+ }
  const result=await adminMutate(`/admin/products/${id}/specs`,{
   method:'POST',body:{summary,description,specs},
  });

@@ -1,13 +1,26 @@
 import {AdminAccessState,AdminPageHeader} from '../../../../components/admin-resource';
 import {AdminActionForm} from '../../../../components/admin-action-form';
 import {adminApi} from '../../../../lib/admin-api';
+import {specGroupsFor} from '../../../../lib/spec-schema';
 import {saveListingUrl,saveProductSpecs,setProductType,uploadProductImage} from '../actions';
 
 type Detail={
  id:string;name:string;slug:string;product_type_key:string;
  manufacturer_name:string;model_code?:string|null;media_id?:string|null;
  listing_id?:string|null;listing_url?:string|null;
+ specs?:Array<{property_key:string;value:unknown;unit:string|null}>;
 };
+
+function factText(v:unknown):string{
+ if(v==null)return '';
+ const s=String(v);
+ try{
+  const parsed=JSON.parse(s);
+  if(typeof parsed==='string')return parsed;
+  if(typeof parsed==='number'||typeof parsed==='boolean')return String(parsed);
+  return s;
+ }catch{return s;}
+}
 
 export default async function Page({params}:{params:Promise<{id:string}>}){
  const {id}=await params;
@@ -17,6 +30,8 @@ export default async function Page({params}:{params:Promise<{id:string}>}){
   <AdminAccessState status={result.status}/>
  </>;
  const p=result.data;
+ const specMap:Record<string,string>={};
+ for(const s of p.specs??[])specMap[s.property_key]=factText(s.value);
  return <>
   <AdminPageHeader eyebrow="Catálogo" title={p.name}
    description={`${p.manufacturer_name} · ${p.product_type_key}${p.model_code?` · ${p.model_code}`:''}`}/>
@@ -59,27 +74,28 @@ export default async function Page({params}:{params:Promise<{id:string}>}){
   </AdminActionForm>
 
   <AdminActionForm action={saveProductSpecs} className="card adminForm">
-   <h2>Resumo e especificações</h2>
-   <p className="muted">Preencha com as informações reais do produto (fonte, tensão, RPM, motor, acessórios).</p>
+   <h2>Ficha técnica</h2>
+   <p className="muted">Campos por categoria. Preencha com as especificações reais do equipamento.</p>
    <input type="hidden" name="id" value={p.id}/>
+   <input type="hidden" name="productType" value={p.product_type_key}/>
    <div className="adminFields">
     <label>Resumo<textarea name="summary" rows={2} placeholder="Resumo curto do produto"/></label>
     <label>Descrição<textarea name="description" rows={2} placeholder="Descrição detalhada"/></label>
-    <label>Fonte (power supply)<input name="power_supply" placeholder="Ex.: Fonte de bancada"/></label>
-    <label>Unidade<input name="power_supply_unit" placeholder="Opcional"/></label>
-    <label>Tensão (voltage)<input name="voltage_range" placeholder="Ex.: 5–12"/></label>
-    <label>Unidade<input name="voltage_range_unit" defaultValue="V"/></label>
-    <label>RPM<input name="rpm" placeholder="Ex.: 8000"/></label>
-    <label>Unidade<input name="rpm_unit" defaultValue="rpm"/></label>
-    <label>Tipo de motor<input name="motor_type" placeholder="Ex.: Motor brushless"/></label>
-    <label>Curso (stroke)<input name="stroke" placeholder="Ex.: 3.5"/></label>
-    <label>Unidade<input name="stroke_unit" defaultValue="mm"/></label>
-    <label>Peso<input name="weight" placeholder="Ex.: 185"/></label>
-    <label>Unidade<input name="weight_unit" defaultValue="g"/></label>
-    <label>Acessórios<input name="accessories" placeholder="Ex.: cartuchos, cabos"/></label>
    </div>
+   {specGroupsFor(p.product_type_key).map(g=>(
+    <fieldset key={g.title} className="specGroup">
+     <h3>{g.title}</h3>
+     <div className="adminFields">
+      {g.fields.map(f=>(
+       <label key={f.key}>{f.label}{f.unit?` (${f.unit})`:''}
+        <input name={f.key} defaultValue={specMap[f.key] ?? ''} placeholder={f.placeholder}/>
+       </label>
+      ))}
+     </div>
+    </fieldset>
+   ))}
    <div className="adminActions">
-    <button className="primary" type="submit">Salvar especificações</button>
+    <button className="primary" type="submit">Salvar ficha técnica</button>
    </div>
   </AdminActionForm>
 

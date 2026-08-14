@@ -46,6 +46,16 @@ export class AdminProductQuery {
         where p.id=$1`,
       [id],
     );
-    return r.rowCount ? r.rows[0] : null;
+    if (!r.rowCount) return null;
+    const specs = await this.pool.query(
+      `select property_key, value, unit
+         from knowledge.canonical_fact
+        where subject_type='PRODUCT_MODEL' and subject_id=$1
+          and valid_to is null
+          and property_key not in ('summary','description')
+        order by property_key`,
+      [id],
+    );
+    return { ...r.rows[0], specs: specs.rows };
   }
 }
