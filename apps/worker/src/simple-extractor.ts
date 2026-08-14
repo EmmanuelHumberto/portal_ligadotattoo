@@ -27,8 +27,54 @@ export class SimpleContentExtractor implements ContentExtractor {
       .filter(h=>h && !/^(#|data:|javascript:)/i.test(h))
       .filter(u=>!/(favicon|\.svg|\.gif|logo|brand|icon|tracking|pixel|ct\.pinterest|facebook\.com\/tr|google|profile|avatar)/i.test(u))
       .map(u=>{try{return new URL(u,input.url).toString();}catch{return u;}});
-    return {title,text,links,structured:{sourceUrl:input.url,ogImage:ogImage?decodeEntities(ogImage):undefined,images}};
+    const price=extractPrice(raw);
+    return {title,text,links,structured:{
+      sourceUrl:input.url,ogImage:ogImage?decodeEntities(ogImage):undefined,
+      images,price:price?.amount,currency:price?.currency,
+    }};
   }
+}
+
+function extractPrice(raw:string):{amount:number;currency:string}|null{
+  const ogAmount=/<meta[^>]+property=["'](?:og:price:amount|product:price:amount)["'][^>]+content=["']([^"']+)["']/i.exec(raw)?.[1];
+  const ogCur=/<meta[^>]+property=["'](?:og:price:currency|product:price:currency)["'][^>]+content=["']([^"']+)["']/i.exec(raw)?.[1];
+  if(ogAmount){
+    const amount=parsePrice(ogAmount);
+    if(amount!=null)return {amount,currency:(ogCur||'USD').toUpperCase()};
+  }
+  for(const m of raw.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)){
+    const ld=m[1];
+    if(!ld)continue;
+    try{
+      const r=findPriceInJson(JSON.parse(ld));
+      if(r)return r;
+    }catch{}
+  }
+  return null;
+}
+
+function findPriceInJson(node:any):{amount:number;currency:string}|null{
+  if(!node||typeof node!=='object')return null;
+  if(Array.isArray(node)){
+    for(const x of node){const r=findPriceInJson(x);if(r)return r;}
+    return null;
+  }
+  if(node.price!=null && typeof node.price!=='object'){
+    const amount=typeof node.price==='string'?parsePrice(node.price):Number(node.price);
+    if(amount!=null && !Number.isNaN(amount))
+      return {amount,currency:String(node.priceCurrency||'USD').toUpperCase()};
+  }
+  for(const key of ['offers','@graph','mainEntity']){
+    if(node[key]){const r=findPriceInJson(node[key]);if(r)return r;}
+  }
+  return null;
+}
+
+function parsePrice(s:string):number|null{
+  const cleaned=String(s).replace(/[^\d.,]/g,'');
+  if(!cleaned)return null;
+  const n=parseFloat(cleaned.replace(/,/g,''));
+  return Number.isNaN(n)?null:n;
 }
 
 function decodeEntities(value:string) {

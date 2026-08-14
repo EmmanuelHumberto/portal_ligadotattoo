@@ -24,6 +24,7 @@ import {ProductSearchProjectionHandler} from './projections/product-search.handl
 import {SimpleContentExtractor} from './simple-extractor';
 import {ManufacturerMediaHandler} from './commerce/manufacturer-media.handler';
 import {CatalogDiscoveryHandler} from './commerce/catalog-discovery.handler';
+import {CatalogCollectPricesHandler} from './commerce/catalog-collect-prices.handler';
 
 export type ProcessorContext={signal:AbortSignal};
 export type Processor={key:string;tick(ctx:ProcessorContext):Promise<void>};
@@ -78,6 +79,7 @@ export function createRuntimeProcessors(
     env.OBJECT_STORAGE_AUTO_CREATE_BUCKET==='true'),
    new ManufacturerMediaHandler(pool,new HttpAcquirer(),new SimpleContentExtractor(),s3,bucket),
    new CatalogDiscoveryHandler(pool,new HttpAcquirer(),new SimpleContentExtractor(),s3,bucket),
+   new CatalogCollectPricesHandler(pool,new HttpAcquirer(),new SimpleContentExtractor()),
   {
    type:'ingestion.run_target',
    handle:(payload:unknown)=>ingestion.runTarget(asRecord(payload).targetId as string),
