@@ -63,12 +63,17 @@ export async function decideProposal(
  const decision=String(formData.get('decision')??'').trim();
  const reason=String(formData.get('reason')??'').trim();
  const expectedVersion=Number(formData.get('expectedVersion')??'');
+ const rawValue=formData.get('value');
  if(!proposalId||(decision!=='APPROVE'&&decision!=='REJECT')||reason.length<3
    ||!Number.isInteger(expectedVersion)||expectedVersion<1)
   return {ok:false,status:422};
 
+ const body:Record<string,unknown>={decision,reason,expectedVersion};
+ if(rawValue!=null&&String(rawValue).trim()!=='')
+  body.value=parseJsonValue(String(rawValue));
+
  const result=await adminMutate(`/admin/canonical-proposals/${proposalId}/decision`,{
-  method:'POST',body:{decision,reason,expectedVersion},
+  method:'POST',body,
  });
  if(!result.ok)return {ok:false,status:result.status};
  revalidatePath('/admin/conhecimento');

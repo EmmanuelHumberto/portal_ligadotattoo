@@ -107,8 +107,27 @@ export default async function Page({params}:{params:Promise<{id:string}>}){
    </div>
   </div>}
 
+  {p.status==='PENDING'&&<div className="card panel">
+   <h2>Aprovar com correção</h2>
+   <p className="muted">Se o valor proposto está errado, corrija-o abaixo e aprove com o valor certo (não precisa rejeitar e recriar).</p>
+   <AdminActionForm action={decideProposal} className="adminActions">
+    <input type="hidden" name="proposalId" value={p.id}/>
+    <input type="hidden" name="expectedVersion" value={p.version}/>
+    <input type="hidden" name="decision" value="APPROVE"/>
+    <label>Valor corrigido
+     <textarea name="value" required rows={3} defaultValue={editableValue(p.proposed_value)}/></label>
+    <input name="reason" required minLength={3} placeholder="Motivo da correção (ex.: curso é fixo, não ajustável)"/>
+    <button className="primary" type="submit">Aprovar com valor corrigido</button>
+   </AdminActionForm>
+  </div>}
+
   <div className="adminActions">
    <Link className="secondary" href="/admin/conhecimento">Voltar</Link>
   </div>
  </>;
+}
+
+function editableValue(value:unknown):string{
+ if(typeof value==='string')return value;
+ return JSON.stringify(value);
 }

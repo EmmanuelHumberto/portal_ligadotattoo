@@ -16,7 +16,7 @@ export class DecideCanonicalProposalHandler {
 
   execute(input:{
     proposalId:string;decision:'APPROVE'|'REJECT';
-    reason:string;expectedVersion:number;
+    reason:string;expectedVersion:number;value?:unknown;
   },actorId:string) {
     return this.txm.run(async tx => {
       if (!input.reason.trim()) throw new Error('Decision reason is required');
@@ -29,6 +29,8 @@ export class DecideCanonicalProposalHandler {
 
       let fact=null;
       const now=new Date();
+      // valor final: permite ao curador corrigir o valor na própria aprovação
+      const finalValue=input.value !== undefined ? input.value : p.proposed_value;
 
       if (input.decision === 'APPROVE') {
         await this.repository.closeCurrentFact(
@@ -36,7 +38,7 @@ export class DecideCanonicalProposalHandler {
         );
         fact=await this.repository.insertFact({
           id:randomUUID(),subjectType:p.subject_type,subjectId:p.subject_id,
-          propertyKey:p.property_key,value:p.proposed_value,
+          propertyKey:p.property_key,value:finalValue,
           validFrom:now,proposalId:p.id,decidedBy:actorId,reason:input.reason,
         },tx);
       }
