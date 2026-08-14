@@ -531,9 +531,13 @@ function extractTechnicalSpecs(text:string,category='ACCESSORY'):Array<{key:stri
   m=/(touch\s*screen|lcd|oled|led\s*display|digital\s*display|tft)/i.exec(t);
   if(m)add('screen',m[1]);
 
-  // connectivity
-  m=/(bluetooth|usb-c|usb\s*type-c|type-c|wireless|wifi|wi-fi)\b/i.exec(t);
+  // connectivity: apenas sem fio (bluetooth/wifi/wireless), não porta de carga
+  m=/(bluetooth|ble|wifi|wi-fi|wireless)\b/i.exec(t);
   if(m)add('connectivity',m[1]);
+
+  // porta de carga/alimentação (USB-C etc.) — não é conectividade sem fio
+  m=/(usb-c|usb\s*type-c|type-c|usb)\b/i.exec(t);
+  if(m)add('charge_port',(m[1] ?? '').toUpperCase());
 
   // runtime / charge time
   m=/(\d+(?:[.,]\d+)?)\s*(?:hours?|hrs?|h)\s*(?:charge|charging|runtime|of\s*power|battery\s*life)/i.exec(t);

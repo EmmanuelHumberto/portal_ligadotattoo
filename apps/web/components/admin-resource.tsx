@@ -12,7 +12,9 @@ export function AdminAccessState({status}:{status:AdminApiStatus}){
   <h1>Acesso administrativo</h1>
   <p>A área está protegida por OIDC. Inicie uma sessão administrativa para consultar dados e operações internas.</p>
   <div className="actions">
-   {loginUrl&&<a className="primary" href={loginUrl}>Entrar com OIDC</a>}
+   {loginUrl
+    ? <a className="primary" href={loginUrl}>Entrar com OIDC</a>
+    : <Link className="primary" href="/dev-login">Iniciar sessão (dev)</Link>}
    <Link className="secondary" href="/">Voltar ao portal</Link>
   </div>
  </div>;

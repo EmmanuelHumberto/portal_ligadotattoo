@@ -32,7 +32,7 @@ export class CommerceQuery {
   async publicOffers(slug:string) {
     const r=await this.pool.query(
       `select li.id listing_id,s.name seller,po.amount,po.currency,
-              po.availability,po.observed_at
+              po.availability,po.observed_at,li.url listing_url
          from catalog.product_model p
          join commerce.listing li on li.product_model_id=p.id
          join commerce.seller s on s.id=li.seller_id
@@ -50,6 +50,7 @@ export class CommerceQuery {
       listingId:x.listing_id,seller:x.seller,amount:Number(x.amount),
       currency:x.currency,availability:x.availability,
       observedAt:x.observed_at,
+      storeDomain:domainOf(x.listing_url),
       outboundUrl:`/go/listing/${x.listing_id}`,
     }))};
   }
@@ -98,5 +99,15 @@ export class CommerceQuery {
       })),
       meta:{hasMore,nextCursor:hasMore?rows.at(-1)?.listing_id??null:null},
     };
+  }
+}
+
+function domainOf(url:string|null|undefined):string|null {
+  if(!url)return null;
+  try {
+    const u=new URL(url);
+    return u.hostname.replace(/^www\./,'');
+  } catch {
+    return null;
   }
 }

@@ -36,7 +36,14 @@ export default async function Product({params}:{params:Promise<{slug:string}>}){
   </section>
   <section className="card provenance">{p.isSyntheticFixture?<><b>Fixture de desenvolvimento</b><span> Estes dados são sintéticos e não representam um produto real.</span></>:<><b>Dados verificados por humanos</b><span> Consulte evidências e histórico de alterações.</span></>}</section>
   <section className="detailGrid"><article className="card content"><h2>Visão geral</h2><p>{p.description}</p></article>
-   <aside id="ofertas" className="card offers"><h2>Ofertas</h2>{offers.items?.map((o:any)=><a key={o.listingId} href={o.outboundUrl}><b>{o.seller}</b><span>{o.currency} {o.amount}</span></a>)}</aside>
+   <aside id="ofertas" className="card offers"><h2>Ofertas</h2>
+    {(offers.items??[]).map((o:any)=><a key={o.listingId} href={o.outboundUrl} rel="nofollow sponsored">
+     <b>{o.seller}</b><span>{o.currency} {o.amount}</span>
+     <small className="muted">{o.storeDomain??'loja'}</small>
+     <em className="offerGo">Ir para a loja</em>
+    </a>)}
+    {!offers.items?.length&&<p className="muted">Nenhuma oferta recente disponível.</p>}
+   </aside>
   </section>
   <JsonLd data={productJsonLd(p,offers.items??[])}/>
  </main></>;

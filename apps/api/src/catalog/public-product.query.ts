@@ -269,7 +269,7 @@ const LABELS:Record<string,string>={
   'output-voltage':'Tensão de saída',
   colors:'Cores',volume:'Volume',base:'Base',vegan:'Vegano',sterile:'Esterilizado',
   needle_config:'Configuração da agulha',needle_diameter:'Diâmetro da agulha',
-  quantity:'Quantidade',power:'Potência',
+  quantity:'Quantidade',power:'Potência',charge_port:'Porta de carga',
   PEN:'Máquina pen',ROTARY:'Máquina rotativa',COIL:'Máquina de bobina',
   POWER_SUPPLY:'Fonte',
   BATTERY:'Bateria',CARTRIDGE:'Cartucho',ACCESSORY:'Acessório',
