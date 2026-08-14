@@ -6,15 +6,17 @@ import { PG_POOL } from '../platform/database.module';
 export class AdminProductQuery {
   constructor(@Inject(PG_POOL) private readonly pool:Pool) {}
 
-  async list(limit=100) {
+  async list(limit=100, type?:string) {
+    const typeFilter=type?.trim().toUpperCase() || null;
     const r=await this.pool.query(
       `select p.id,p.slug,p.name,p.product_type_key,p.model_code,
               p.lifecycle,p.version,p.created_at,p.updated_at,
               m.name manufacturer_name
          from catalog.product_model p
          join catalog.manufacturer m on m.id=p.manufacturer_id
-        order by p.name limit $1`,
-      [Math.min(Math.max(limit,1),200)],
+        where ($1::text is null or p.product_type_key=$1)
+        order by p.name limit $2`,
+      [typeFilter, Math.min(Math.max(limit,1),200)],
     );
     return {items:r.rows};
   }

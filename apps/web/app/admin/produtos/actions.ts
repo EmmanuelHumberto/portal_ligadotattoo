@@ -81,3 +81,19 @@ export async function saveListingUrl(
  revalidatePath('/ofertas');
  return {ok:true};
 }
+
+export async function setProductType(
+  _prev:ActionResult,formData:FormData,
+):Promise<ActionResult>{
+ const id=String(formData.get('id')??'').trim();
+ const productTypeKey=String(formData.get('productTypeKey')??'').trim();
+ if(!id||!productTypeKey)return {ok:false,status:422};
+ const result=await adminMutate(`/admin/products/${id}/type`,{
+  method:'PATCH',body:{productTypeKey},
+ });
+ if(!result.ok)return {ok:false,status:result.status};
+ revalidatePath(`/admin/produtos/${id}`);
+ revalidatePath('/admin/produtos');
+ revalidatePath('/maquinas');
+ return {ok:true};
+}

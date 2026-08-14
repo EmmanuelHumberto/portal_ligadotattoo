@@ -5,10 +5,20 @@ import {createProduct} from './actions';
 
 type Rows={items:Record<string,unknown>[]};
 
-export default async function Page(){
- const result=await adminApi<Rows>('/admin/products');
+const TYPES=['PEN','ROTARY','COIL','CARTRIDGE','INK','BATTERY','POWER_SUPPLY','ACCESSORY'];
+
+export default async function Page({searchParams}:{searchParams:Promise<{type?:string}>}){
+ const {type}=await searchParams;
+ const typeParam=type?`?type=${encodeURIComponent(type)}`:'';
+ const result=await adminApi<Rows>(`/admin/products${typeParam}`);
  return <>
   <AdminPageHeader eyebrow="Catálogo" title="Produtos" description="Modelos de máquina e equipamentos do catálogo."/>
+  <nav className="adminFilterBar" aria-label="Filtrar por tipo">
+   <a className={!type?'is-active':''} href="/admin/produtos">Todos</a>
+   {TYPES.map(t=>(
+    <a key={t} className={type===t?'is-active':''} href={`/admin/produtos?type=${t}`}>{t}</a>
+   ))}
+  </nav>
   <AdminActionForm action={createProduct} className="card adminForm">
    <h2>Novo produto</h2>
    <div className="adminFields">

@@ -1,7 +1,7 @@
 import {AdminAccessState,AdminPageHeader} from '../../../../components/admin-resource';
 import {AdminActionForm} from '../../../../components/admin-action-form';
 import {adminApi} from '../../../../lib/admin-api';
-import {saveListingUrl,saveProductSpecs,uploadProductImage} from '../actions';
+import {saveListingUrl,saveProductSpecs,setProductType,uploadProductImage} from '../actions';
 
 type Detail={
  id:string;name:string;slug:string;product_type_key:string;
@@ -20,6 +20,30 @@ export default async function Page({params}:{params:Promise<{id:string}>}){
  return <>
   <AdminPageHeader eyebrow="Catálogo" title={p.name}
    description={`${p.manufacturer_name} · ${p.product_type_key}${p.model_code?` · ${p.model_code}`:''}`}/>
+
+  <AdminActionForm action={setProductType} className="card adminForm">
+   <h2>Reclassificar tipo</h2>
+   <p className="muted">Corrija a categoria pontualmente, sem rodar a descoberta. A decisão fica registrada e a busca é re-sincronizada.</p>
+   <input type="hidden" name="id" value={p.id}/>
+   <div className="adminFields">
+    <label>Tipo atual: <strong>{p.product_type_key}</strong></label>
+    <label>Novo tipo
+     <select name="productTypeKey" defaultValue={p.product_type_key}>
+      <option value="PEN">PEN — máquina pen</option>
+      <option value="ROTARY">ROTARY — rotativa</option>
+      <option value="COIL">COIL — bobina</option>
+      <option value="CARTRIDGE">CARTRIDGE — cartucho</option>
+      <option value="INK">INK — tinta</option>
+      <option value="BATTERY">BATTERY — bateria</option>
+      <option value="POWER_SUPPLY">POWER_SUPPLY — fonte</option>
+      <option value="ACCESSORY">ACCESSORY — acessório</option>
+     </select>
+    </label>
+   </div>
+   <div className="adminActions">
+    <button className="primary" type="submit">Reclassificar</button>
+   </div>
+  </AdminActionForm>
 
   <AdminActionForm action={uploadProductImage} className="card adminForm">
    <h2>Imagem do produto</h2>

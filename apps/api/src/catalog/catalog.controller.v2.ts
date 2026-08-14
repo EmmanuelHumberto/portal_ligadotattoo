@@ -1,6 +1,6 @@
 import {
-  Body,Controller,Get,HttpCode,Inject,Param,Post,
-  UploadedFile,UseInterceptors,
+  BadRequestException,Body,Controller,Get,HttpCode,Inject,NotFoundException,
+  Param,Patch,Post,Query,UploadedFile,UseInterceptors,
 } from '@nestjs/common';
 import {FileInterceptor} from '@nestjs/platform-express';
 import {randomUUID} from 'node:crypto';
@@ -23,7 +23,7 @@ export class ProductController {
 
   @Get()
   @RequireCapability('catalog.read')
-  list(){ return this.products.list(); }
+  list(@Query('type') type?:string){ return this.products.list(100, type); }
 
   @Get(':id')
   @RequireCapability('catalog.read')
@@ -129,5 +129,82 @@ export class ProductController {
       );
     }
     return {facts:facts.length};
+  }
+
+  @Patch(':id/type')
+  @RequireCapability('catalog.write')
+  async setType(@Param('id') id:string, @Body() body:any, @Actor() actor:any) {
+    const typeKey=String(body?.productTypeKey ?? '').trim().toUpperCase();
+    const allowed=['PEN','ROTARY','COIL','CARTRIDGE','INK','BATTERY','POWER_SUPPLY','ACCESSORY'];
+    if(!allowed.includes(typeKey)){
+      throw new BadRequestException(`Tipo de produto inválido: ${typeKey}`);
+    }
+
+    const updated=await this.pool.query(
+      `update catalog.product_model
+          set product_type_key=$2, version=version+1, updated_at=now()
+        where id=$1
+        returning id, name, slug, product_type_key`,
+      [id, typeKey],
+    );
+    if(!updated.rowCount)throw new NotFoundException('Produto não encontrado');
+    const p=updated.rows[0];
+    const actorId=actor?.actorId ?? 'system';
+
+    // Auditoria: decisão manual registrada como fact (mesmo padrão do setSpecs).
+    const claimId=randomUUID();
+    await this.pool.query(
+      `insert into knowledge.claim
+       (id,subject_type,subject_id,property_key,value,claimant_type,
+        observed_at,confidence,status,version,created_at)
+       values ($1,'PRODUCT_MODEL',$2,'product_type',$3::jsonb,'CURATOR',
+        now(),1.0,'ACTIVE',1,now())`,
+      [claimId, id, JSON.stringify(typeKey)],
+    );
+    const proposalId=randomUUID();
+    await this.pool.query(
+      `insert into knowledge.canonical_proposal
+       (id,subject_type,subject_id,property_key,proposed_value,evidence_ids,
+        status,created_by,created_at,decided_by,decided_at,decision_reason,version)
+       values ($1,'PRODUCT_MODEL',$2,'product_type',$3::jsonb,ARRAY[$4]::uuid[],
+        'APPROVED',$5,now(),$5,now(),'CURATOR_MANUAL',1)`,
+      [proposalId, id, JSON.stringify(typeKey), claimId, actorId],
+    );
+    await this.pool.query(
+      `insert into knowledge.canonical_fact
+       (id,subject_type,subject_id,property_key,value,unit,valid_from,
+        proposal_id,decided_by,decision_reason,version)
+       values (gen_random_uuid(),'PRODUCT_MODEL',$1,'product_type',$2::jsonb,
+        null,now(),$3,$4,'CURATOR_MANUAL',1)`,
+      [id, JSON.stringify(typeKey), proposalId, actorId],
+    );
+
+    // Re-sincroniza a busca: o tipo compõe o subtitle do search_document.
+    const info=await this.pool.query(
+      `select m.name manufacturer_name, b.name brand_name
+         from catalog.product_model p
+         join catalog.manufacturer m on m.id=p.manufacturer_id
+         left join catalog.brand b on b.id=p.brand_id
+        where p.id=$1`,
+      [id],
+    );
+    const i=info.rows[0] ?? {};
+    const subtitle=[i.manufacturer_name, i.brand_name, typeKey]
+      .filter(Boolean).join(' · ');
+    await this.pool.query(
+      `insert into search.search_document
+       (id,source_type,source_id,document_type,title,normalized_title,subtitle,
+        public_url,is_public,search_vector,updated_at)
+       values ($1,'PRODUCT_MODEL',$1,'PRODUCT',$2,lower($2),$3,$4,true,
+         setweight(to_tsvector('simple',coalesce($2,'')),'A') ||
+         setweight(to_tsvector('simple',coalesce($3,'')),'B'),now())
+       on conflict (source_type,source_id)
+       do update set subtitle=excluded.subtitle,
+                     search_vector=excluded.search_vector,
+                     updated_at=now()`,
+      [id, p.name, subtitle, `/maquinas/${p.slug}`],
+    );
+
+    return {id, name:p.name, productTypeKey:typeKey};
   }
 }
