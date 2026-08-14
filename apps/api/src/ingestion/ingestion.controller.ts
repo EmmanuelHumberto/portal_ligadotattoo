@@ -1,9 +1,11 @@
-import { Body,Controller,Get,Post,Query } from '@nestjs/common';
+import { Body,Controller,Get,Inject,Post,Query } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
+import { Pool } from 'pg';
 import { Actor } from '../iam/actor.decorator';
 import { RequireCapability } from '../iam/require-capability.decorator';
 import { TransactionManager } from '../platform/transaction-manager';
 import { PostgresAuditRepository } from '../platform/audit.repository';
+import { PG_POOL } from '../platform/database.module';
 import { Source } from './source.domain';
 import { SourceRepository } from './source.repository';
 import { IngestionQuery } from './ingestion.query';
@@ -15,6 +17,7 @@ export class IngestionController {
     private readonly sourcesRepo:SourceRepository,
     private readonly query:IngestionQuery,
     private readonly audit:PostgresAuditRepository,
+    @Inject(PG_POOL) private readonly pool:Pool,
   ) {}
 
   @Get('sources')
@@ -39,6 +42,32 @@ export class IngestionController {
   @RequireCapability('ingestion.read')
   runs(@Query('sourceId') sourceId?:string,@Query('status') status?:string) {
     return this.query.runs({sourceId,status});
+  }
+
+  @Post('ingestion/run')
+  @RequireCapability('source.write')
+  async runIngestion(@Query('kind') kind?:string) {
+    const r=await this.pool.query(
+      `insert into ops.job
+       (id,job_type,job_version,payload,status,available_at,deduplication_key)
+       select gen_random_uuid(),'ingestion.run_target',1,
+              jsonb_build_object('targetId',t.id),'PENDING',now(),
+              'ingestion:'||t.id::text||':'||floor(extract(epoch from now())/60)::bigint
+         from ingestion.crawl_target t
+         join ingestion.source s on s.id=t.source_id
+        where t.status='ACTIVE' and s.status='ACTIVE'
+          and ($1::text is null or s.kind=$1)
+          and not exists (
+            select 1 from ops.job j
+             where j.job_type='ingestion.run_target'
+               and j.status in ('PENDING','RUNNING','RETRY')
+               and j.payload->>'targetId'=t.id::text
+          )
+       on conflict (job_type,deduplication_key)
+         where deduplication_key is not null do nothing`,
+      [kind?.trim() || null],
+    );
+    return {enqueued:r.rowCount ?? 0};
   }
 
   @Get('ingestion/discoveries')

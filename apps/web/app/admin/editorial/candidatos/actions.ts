@@ -15,3 +15,14 @@ export async function setAutoDraft(
  revalidatePath('/admin/editorial/candidatos');
  return {ok:true};
 }
+
+export async function runAutoDraft(
+  _prev:ActionResult,formData:FormData,
+):Promise<ActionResult>{
+ const result=await adminMutate('/admin/editorial-config/auto-draft/run',{
+  method:'POST',body:{},
+ });
+ if(!result.ok)return {ok:false,status:result.status};
+ revalidatePath('/admin/editorial/candidatos');
+ return {ok:true};
+}

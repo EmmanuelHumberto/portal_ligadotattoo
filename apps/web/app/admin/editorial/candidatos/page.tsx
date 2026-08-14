@@ -2,7 +2,7 @@ import {AdminAccessState,AdminPageHeader} from '../../../../components/admin-res
 import {AdminActionForm} from '../../../../components/admin-action-form';
 import {adminApi} from '../../../../lib/admin-api';
 import {generateAIDraft} from '../actions';
-import {setAutoDraft} from './actions';
+import {runAutoDraft,setAutoDraft} from './actions';
 
 type Row={id:string;title?:string;status?:string;source_url?:string;created_at?:string};
 type Rows={items:Row[]};
@@ -56,6 +56,9 @@ function AutoDraftToggle({enabled}:{enabled:boolean}){
     <button className={enabled?'secondary':'primary'} type="submit">
      {enabled?'Desativar':'Ativar'}
     </button>
+   </AdminActionForm>
+   <AdminActionForm action={runAutoDraft}>
+    <button className="secondary" type="submit">Gerar rascunhos agora</button>
    </AdminActionForm>
   </div>
  </div>;
