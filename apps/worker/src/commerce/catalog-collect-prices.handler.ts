@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import type { JobHandler, JobResult } from '../job-runner';
 import { HttpAcquirer } from '../ingestion/http-acquirer';
 import { SimpleContentExtractor } from '../simple-extractor';
+import { emitPriceObserved } from './price-event-router';
 
 export class CatalogCollectPricesHandler implements JobHandler {
   readonly type='catalog.collect_prices';
@@ -48,12 +49,16 @@ export class CatalogCollectPricesHandler implements JobHandler {
     const amount=Number(structured.price);
     if(Number.isNaN(amount)||amount<=0)return false;
     const currency=String(structured.currency ?? 'USD').toUpperCase();
+    const observationId=randomUUID();
     await this.pool.query(
       `insert into commerce.price_observation
        (id,listing_id,amount,currency,availability,observed_at)
        values ($1,$2,$3,$4,'IN_STOCK',now())`,
-      [randomUUID(),li.id,amount,currency],
+      [observationId,li.id,amount,currency],
     );
+    await emitPriceObserved(this.pool,{
+      listingId:li.id,observationId,amount,currency,
+    });
     return true;
   }
 }

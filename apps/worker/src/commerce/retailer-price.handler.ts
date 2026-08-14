@@ -4,6 +4,7 @@ import type { JobHandler, JobResult } from '../job-runner';
 import { HttpAcquirer } from '../ingestion/http-acquirer';
 import { SimpleContentExtractor } from '../simple-extractor';
 import { cleanProductName, extractProductLinks, slugify } from './catalog-discovery.handler';
+import { emitPriceObserved } from './price-event-router';
 
 type Model={id:string;name:string;slug:string};
 
@@ -104,13 +105,18 @@ export class RetailerPriceHandler implements JobHandler {
         )`,
       [lid,sellerId,model.id,model.slug,url],
     );
+    const observationId=randomUUID();
+    const amount=Number(structured.price);
+    const currency=String(structured.currency ?? 'USD').toUpperCase();
     await this.pool.query(
       `insert into commerce.price_observation
        (id,listing_id,amount,currency,availability,observed_at)
        values ($1,$2,$3,$4,'IN_STOCK',now())`,
-      [randomUUID(),lid,Number(structured.price),
-       String(structured.currency ?? 'USD').toUpperCase()],
+      [observationId,lid,amount,currency],
     );
+    await emitPriceObserved(this.pool,{
+      listingId:lid,observationId,amount,currency,
+    });
   }
 }
 
