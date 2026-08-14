@@ -96,6 +96,7 @@ export class CatalogDiscoveryHandler implements JobHandler {
     const url=handle ? `${base}/products/${handle}` : base;
     const productType=String(p.product_type ?? '');
     const tags=Array.isArray(p.tags) ? p.tags.map((x:unknown)=>String(x)) : [];
+    const category=classifyProductType(name,productType,tags);
 
     let productId=null;
     const existing=await this.pool.query(
@@ -111,7 +112,7 @@ export class CatalogDiscoveryHandler implements JobHandler {
           model_code,lifecycle,version)
          values ($1,$2,$5,$3,lower($3),$4,null,'ACTIVE',1)
          returning id`,
-        [randomUUID(),m.id,name,slug,classifyProductType(name,productType,tags)],
+        [randomUUID(),m.id,name,slug,category],
       );
       productId=pm.rows[0].id;
     }
@@ -164,7 +165,7 @@ export class CatalogDiscoveryHandler implements JobHandler {
       if(!hasDesc.rowCount){
         await this.recordFact(productId,'description',desc.slice(0,3000),null,url);
       }
-      await this.recordSpecs(productId,desc,url);
+      await this.recordSpecs(productId,desc,url,category);
     }
     return true;
   }
@@ -182,6 +183,7 @@ export class CatalogDiscoveryHandler implements JobHandler {
     const image=(structured.ogImage
       ?? (Array.isArray(structured.images)?structured.images[0]:undefined)) as string|undefined;
     const slug=slugify(name);
+    const category=classifyProductType(name);
 
     // product_model (dedup por manufacturer + slug)
     let productId=null;
@@ -198,7 +200,7 @@ export class CatalogDiscoveryHandler implements JobHandler {
           model_code,lifecycle,version)
          values ($1,$2,$5,$3,lower($3),$4,null,'ACTIVE',1)
          returning id`,
-        [randomUUID(),m.id,name,slug,classifyProductType(name)],
+        [randomUUID(),m.id,name,slug,category],
       );
       productId=pm.rows[0].id;
     }
@@ -237,11 +239,11 @@ export class CatalogDiscoveryHandler implements JobHandler {
         );
       }
     }
-    try { await this.recordContent(productId,html,url); } catch {}
+    try { await this.recordContent(productId,html,url,category); } catch {}
     return true;
   }
 
-  private async recordContent(productId:string,html:string,sourceUrl:string):Promise<void>{
+  private async recordContent(productId:string,html:string,sourceUrl:string,category='ACCESSORY'):Promise<void>{
     const metaDesc=extractMetaDescription(html);
     const pageText=cleanPageText(html);
     const desc=(metaDesc && metaDesc.length>20) ? metaDesc : (pageText.length>30 ? pageText : '');
@@ -254,12 +256,12 @@ export class CatalogDiscoveryHandler implements JobHandler {
       if(!hasDesc.rowCount){
         await this.recordFact(productId,'description',desc.slice(0,3000),null,sourceUrl);
       }
-      await this.recordSpecs(productId,desc,sourceUrl);
+      await this.recordSpecs(productId,desc,sourceUrl,category);
     }
   }
 
-  private async recordSpecs(productId:string,text:string,sourceUrl:string):Promise<void>{
-    for(const s of extractTechnicalSpecs(text)){
+  private async recordSpecs(productId:string,text:string,sourceUrl:string,category='ACCESSORY'):Promise<void>{
+    for(const s of extractTechnicalSpecs(text,category)){
       const key=s.key;
       const existing=await this.pool.query(
         `select 1 from knowledge.canonical_fact
@@ -457,7 +459,7 @@ function extractSpecTable(html:string):Array<{key:string;value:string}>{
   return out.slice(0,12);
 }
 
-function extractTechnicalSpecs(text:string):Array<{key:string;value:string}>{
+function extractTechnicalSpecs(text:string,category='ACCESSORY'):Array<{key:string;value:string}>{
   const t=text.replace(/\s+/g,' ').trim();
   if(!t)return [];
   const out:Array<{key:string;value:string}>=[];
@@ -467,34 +469,41 @@ function extractTechnicalSpecs(text:string):Array<{key:string;value:string}>{
     if(v && !seen.has(key)){ seen.add(key); out.push({key,value:v}); }
   };
   let m:RegExpExecArray|null;
+  const isMachine=category==='PEN'||category==='ROTARY'||category==='COIL';
 
-  // stroke (curso): "4 mm stroke", "stroke 2.4-4.2mm", "adjustable stroke 2.4-4.2 mm"
-  m=/stroke[^.\n]{0,60}?(\d+(?:[.,]\d+)?)(?:\s*(?:-|–|—|to|a)\s*(\d+(?:[.,]\d+)?))?\s*mm/i.exec(t);
-  if(!m)m=/(\d+(?:[.,]\d+)?)(?:\s*(?:-|–|—|to)\s*(\d+(?:[.,]\d+)?))?\s*mm\s*(?:adjustable\s*)?stroke/i.exec(t);
-  if(m)add('stroke',m[2]?`${m[1]}–${m[2]} mm`:`${m[1]} mm`);
+  // stroke (curso): apenas máquinas — "4 mm stroke", "stroke 2.4-4.2mm"
+  if(isMachine){
+    m=/stroke[^.\n]{0,60}?(\d+(?:[.,]\d+)?)(?:\s*(?:-|–|—|to|a)\s*(\d+(?:[.,]\d+)?))?\s*mm/i.exec(t);
+    if(!m)m=/(\d+(?:[.,]\d+)?)(?:\s*(?:-|–|—|to)\s*(\d+(?:[.,]\d+)?))?\s*mm\s*(?:adjustable\s*)?stroke/i.exec(t);
+    if(m)add('stroke',m[2]?`${m[1]}–${m[2]} mm`:`${m[1]} mm`);
+  }
 
-  // voltage (tensão): "5-10 volts", "8-12V", "5.5 to 6.5 hours of power" (não)
+  // voltage (tensão): máquinas, baterias e fontes
   m=/(\d+(?:[.,]\d+)?)(?:\s*(?:-|–|—|to|and)\s*(\d+(?:[.,]\d+)?))?\s*(?:v|volts?)\b/i.exec(t);
   if(m)add('voltage_range',m[2]?`${m[1]}–${m[2]} V`:`${m[1]} V`);
 
-  // motor type
-  m=/(coreless|brushless|swiss(?:-made)?\s+motor|maxon\s+motor|faubion\s+motor|dc\s+motor|swiss\s+motor)/i.exec(t);
-  if(m)add('motor_type',m[1]);
-  else {
-    m=/motor[^.\n]{0,40}?(coreless|brushless)/i.exec(t);
+  // motor type: apenas máquinas
+  if(isMachine){
+    m=/(coreless|brushless|swiss(?:-made)?\s+motor|maxon\s+motor|faubion\s+motor|dc\s+motor|swiss\s+motor)/i.exec(t);
     if(m)add('motor_type',m[1]);
+    else {
+      m=/motor[^.\n]{0,40}?(coreless|brushless)/i.exec(t);
+      if(m)add('motor_type',m[1]);
+    }
   }
 
-  // rpm
-  m=/(\d[\d,.]*)\s*(?:rpm|rotations?\s*(?:per|a)\s*minute)/i.exec(t);
-  if(m)add('rpm',`${m[1]} RPM`);
+  // rpm: apenas máquinas
+  if(isMachine){
+    m=/(\d[\d,.]*)\s*(?:rpm|rotations?\s*(?:per|a)\s*minute)/i.exec(t);
+    if(m)add('rpm',`${m[1]} RPM`);
+  }
 
-  // battery capacity
+  // battery capacity (mAh)
   m=/(\d+)\s*mah\b/i.exec(t);
   if(m)add('battery_capacity',`${m[1]} mAh`);
 
   // battery model (18500, 18650, 21700...)
-  m=/\b(1[0-9]{4}|2[0-9]{4})\b\s*(?:batter(?:y|ies))?/i.exec(t);
+  m=/\b(1[0-9]{4}|2[0-9]{4})\b/i.exec(t);
   if(m && /batter/i.test(t))add('battery',m[1]);
 
   // weight
@@ -506,13 +515,17 @@ function extractTechnicalSpecs(text:string):Array<{key:string;value:string}>{
   m=/(aircraft(?:-grade)?\s*(?:aluminum|aluminium)|aluminum|aluminium|titanium|brass|stainless\s*steel|copper|aerospace\s*(?:aluminum|aluminium))\b/i.exec(t);
   if(m)add('material',m[1]);
 
-  // drive / transmission
-  m=/(direct\s*drive|swash\s*drive|swashdrive|gear\s*drive|linear\s*(?:rotary|drive)|cam\s*drive)/i.exec(t);
-  if(m)add('drive',m[1]);
+  // drive / transmission: apenas máquinas
+  if(isMachine){
+    m=/(direct\s*drive|swash\s*drive|swashdrive|gear\s*drive|linear\s*(?:rotary|drive)|cam\s*drive)/i.exec(t);
+    if(m)add('drive',m[1]);
+  }
 
-  // stroke adjustability
-  if(/adjustable\s*(?:stroke|course)/i.test(t))add('stroke_type','Ajustável');
-  else if(/fixed\s*(?:stroke|course)/i.test(t))add('stroke_type','Fixo');
+  // stroke adjustability: apenas máquinas
+  if(isMachine){
+    if(/adjustable\s*(?:stroke|course)/i.test(t))add('stroke_type','Ajustável');
+    else if(/fixed\s*(?:stroke|course)/i.test(t))add('stroke_type','Fixo');
+  }
 
   // screen / display
   m=/(touch\s*screen|lcd|oled|led\s*display|digital\s*display|tft)/i.exec(t);
@@ -525,6 +538,45 @@ function extractTechnicalSpecs(text:string):Array<{key:string;value:string}>{
   // runtime / charge time
   m=/(\d+(?:[.,]\d+)?)\s*(?:hours?|hrs?|h)\s*(?:charge|charging|runtime|of\s*power|battery\s*life)/i.exec(t);
   if(m)add('runtime',`${m[1]} h`);
+
+  // ---- específicas por categoria ----
+
+  if(category==='BATTERY'){
+    m=/(\d+(?:[.,]\d+)?)\s*(?:hours?|hrs?|h)\s*(?:to\s*)?(?:charge|charging|recharge)/i.exec(t);
+    if(m)add('charge_time',`${m[1]} h`);
+  }
+
+  if(category==='POWER_SUPPLY'){
+    m=/(\d+(?:[.,]\d+)?)\s*w\b/i.exec(t);
+    if(m)add('power',`${m[1]} W`);
+    m=/output[^.\n]{0,30}?(\d+(?:[.,]\d+)?)\s*(?:v|volts?)\b/i.exec(t);
+    if(m)add('output-voltage',`${m[1]} V`);
+    m=/input[^.\n]{0,30}?(\d+(?:[.,]\d+)?)\s*(?:v|volts?)\b/i.exec(t);
+    if(m)add('input-voltage',`${m[1]} V`);
+  }
+
+  if(category==='INK'){
+    m=/(\d+)\s*(?:color|colour|cores|shades|colors?)/i.exec(t);
+    if(m)add('colors',`${m[1]} cores`);
+    m=/(\d+(?:[.,]\d+)?)\s*(?:ml|oz|fl\s*oz)\b/i.exec(t);
+    if(m)add('volume',`${m[1]} ${/ml/i.test(m[0])?'ml':'oz'}`);
+    m=/(water(?:-|\s*)based|alcohol(?:-|\s*)based|acrylic)/i.exec(t);
+    if(m)add('base',m[1]);
+    if(/vegan|cruelty(?:-|\s*)free/i.test(t))add('vegan','Sim');
+    if(/steril(?:ized|e)|gamma|eo\s*(?:gas|sterilized)/i.test(t))add('sterile','Sim');
+  }
+
+  if(category==='CARTRIDGE'){
+    m=/\b(\d+(?:\.\d+)?)\s*(RL|RS|RM|M1|M2|F)\b/i.exec(t);
+    if(m)add('needle_config',m[0].trim());
+    else {
+      m=/(round\s*(?:liner|shader)|magnum|flat\s*(?:shader|magnum)|liner|shader)/i.exec(t);
+      if(m)add('needle_config',m[1]);
+    }
+    m=/(\d+(?:[.,]\d+)?)\s*(?:pcs|pieces|pack|count|unid)/i.exec(t);
+    if(m)add('quantity',m[1]);
+    if(/steril(?:ized|e)|eo\s*(?:gas|sterilized)|gamma/i.test(t))add('sterile','Sim');
+  }
 
   return out;
 }

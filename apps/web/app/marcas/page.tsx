@@ -13,10 +13,14 @@ export default async function Brands(){
   <header className="catalogHead"><div><p className="accent">FABRICANTES</p>
    <h1>Marcas e fabricantes</h1><p className="muted">Explore os fabricantes presentes no catálogo técnico.</p></div></header>
   <section className="grid brandGrid">{(data.items??[]).map((brand:any)=><article
-   className="card brandCard" key={brand.id}><span className="accent">{brand.countryCode??'GLOBAL'}</span>
+   className="card brandCard" key={brand.id}>
+   {brand.logoUrl
+    ? <img className="brandLogo" src={brand.logoUrl} alt="" width={64} height={64}/>
+    : <span className="brandMark accent">{brand.name?.[0]??'?'}</span>}
+   <span className="accent">{brand.countryCode??'GLOBAL'}</span>
    <h2><Link href={`/marcas/${brand.slug}`}>{brand.name}</Link></h2>
    <p className="muted">{brand.productCount} produtos catalogados</p>
-   <Link className="btn secondary" href={`/marcas/${brand.slug}`}>Ver máquinas</Link>
+   <Link className="btn secondary" href={`/marcas/${brand.slug}`}>Ver produtos</Link>
   </article>)}</section>
  </main></>;
 }

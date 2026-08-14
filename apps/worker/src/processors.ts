@@ -21,6 +21,7 @@ import {S3Client} from '@aws-sdk/client-s3';
 import {OutboxDispatcher} from './outbox-dispatcher';
 import {CanonicalChangeHandler} from './projections/canonical-change.handler';
 import {ProductSearchProjectionHandler} from './projections/product-search.handler';
+import {ProductSearchSyncHandler} from './projections/product-search-sync.handler';
 import {SimpleContentExtractor} from './simple-extractor';
 import {ManufacturerMediaHandler} from './commerce/manufacturer-media.handler';
 import {CatalogDiscoveryHandler} from './commerce/catalog-discovery.handler';
@@ -64,6 +65,7 @@ export function createRuntimeProcessors(
   const bucket=env.OBJECT_STORAGE_BUCKET?.trim() ?? '';
   const handlers:JobHandler[]=[
   new ProductSearchProjectionHandler(pool),
+  new ProductSearchSyncHandler(pool),
   new CanonicalChangeHandler(pool),
    new EditorialSearchProjectionHandler(pool),
    new ScheduledPublicationHandler(pool),

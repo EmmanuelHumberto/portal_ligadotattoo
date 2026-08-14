@@ -33,8 +33,16 @@ export class PublicManufacturerQuery {
 }
 
 function mapManufacturer(row:any) {
+ let logoUrl:null|string=null;
+ if(row.official_website){
+  try {
+   const u=new URL(String(row.official_website));
+   logoUrl=`https://www.google.com/s2/favicons?domain=${u.hostname}&sz=64`;
+  } catch {}
+ }
  return {
   id:row.id,name:row.name,slug:row.slug,countryCode:row.country_code,
   officialWebsite:row.official_website,productCount:Number(row.product_count??0),
+  logoUrl,
  };
 }
