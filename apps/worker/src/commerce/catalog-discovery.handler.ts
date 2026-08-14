@@ -234,7 +234,7 @@ export class CatalogDiscoveryHandler implements JobHandler {
   }
 }
 
-function extractProductLinks(html:string,baseUrl:string):string[]{
+export function extractProductLinks(html:string,baseUrl:string):string[]{
   const base=new URL(baseUrl);
   const seen=new Set<string>();
   const out:string[]=[];
@@ -278,7 +278,7 @@ function classifyProductType(name:string):string{
   return 'ACCESSORY';
 }
 
-function cleanProductName(rawTitle:string):string|null{
+export function cleanProductName(rawTitle:string):string|null{
   const raw=rawTitle.replace(/\s+/g,' ').trim();
   if(!raw)return null;
   // nome antes do separador "|" ou "–"
@@ -288,7 +288,7 @@ function cleanProductName(rawTitle:string):string|null{
   return name;
 }
 
-function slugify(value:string){
+export function slugify(value:string){
   return value.toLowerCase()
     .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
     .replace(/[^a-z0-9]+/g,'-')
