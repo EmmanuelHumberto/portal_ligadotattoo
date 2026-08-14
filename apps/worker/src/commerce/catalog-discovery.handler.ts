@@ -106,7 +106,7 @@ export class CatalogDiscoveryHandler implements JobHandler {
   private async fetchVtexProducts(base:string):Promise<any[]|null>{
     try {
       const r=await this.http.acquire({
-        url:`${base}/api/catalog_system/pub/products/search?_from=0&_to=99`,
+        url:`${base}/api/catalog_system/pub/products/search?_from=0&_to=49`,
         allowedHosts:[],maxBytes:5_000_000,timeoutMs:20_000,
       });
       const data=JSON.parse(r.body.toString('utf8'));
@@ -461,9 +461,9 @@ function classifyProductType(name:string,productType?:string,tags?:string[]):str
   const n=name.toLowerCase();
   const t=(productType??'').toLowerCase();
   const g=(tags??[]).join(' ').toLowerCase();
-  if(/cartridge/i.test(n) && !/machine/i.test(n)) return 'CARTRIDGE';
+  if(/cartridge|cartucho/i.test(n) && !/machine/i.test(n)) return 'CARTRIDGE';
   if(/power supply|power box|power pack|power unit|powerpack|fonte/i.test(n) && !/machine/i.test(n)) return 'POWER_SUPPLY';
-  if(/battery|batteries|powerbolt|power bolt/i.test(n) && !/machine|pen|rotary/i.test(n)) return 'BATTERY';
+  if(/battery|batteries|bateria|powerbolt|power bolt/i.test(n) && !/machine|pen|rotary/i.test(n)) return 'BATTERY';
   if(/\bcoil\b/i.test(`${n} ${t} ${g}`) && !/cores?\b|washers?\b|\bcoils\b/i.test(n)) return 'COIL';
   if(/rotary/i.test(`${n} ${g}`)) return 'ROTARY';
   if(/machine|tattoo pen|wireless pen|power pen|pen gun|tattoo gun|tattoo kit|\bpmu\b|wand|shader|packer|liner|\bpen\b/i.test(n)

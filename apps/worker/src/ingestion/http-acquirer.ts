@@ -40,7 +40,9 @@ export class HttpAcquirer {
     );
     const remainingMs=deadline-Date.now();
     if(remainingMs<=0)throw new Error('HTTP acquisition timed out');
-    const response=await this.transport(target,remainingMs,maxBytes);
+    const response=await withinDeadline(
+      this.transport(target,remainingMs,maxBytes),deadline,
+    );
 
     if(response.status>=300&&response.status<400){
       const location=singleHeader(response.headers.location);

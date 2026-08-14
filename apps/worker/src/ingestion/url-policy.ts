@@ -74,9 +74,13 @@ export function isPublicIp(raw:string):boolean {
 
 async function systemResolve(hostname:string):Promise<ResolvedAddress[]> {
   const entries=await lookup(hostname,{all:true,verbatim:true});
-  return entries.map(entry=>({
+  const addrs=entries.map(entry=>({
     address:entry.address,family:entry.family as 4|6,
   }));
+  // Prefere IPv4: em redes com IPv6 sem rota efetiva, conexões IPv6
+  // ficam penduradas no connect (que o req.setTimeout não cobre).
+  addrs.sort((a,b)=>(a.family===4?-1:b.family===4?1:a.family-b.family));
+  return addrs;
 }
 
 function normalizeHost(host:string) {
