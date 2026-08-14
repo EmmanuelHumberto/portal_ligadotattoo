@@ -33,15 +33,6 @@ export class CatalogTranslateHandler implements JobHandler {
               and decision_reason='CATALOG_IMPORT'`,
           [JSON.stringify(translated),r.subject_id],
         );
-        await this.pool.query(
-          `update knowledge.canonical_fact
-              set value=$1::jsonb, decision_reason='CATALOG_TRANSLATED'
-            where subject_type='PRODUCT_MODEL'
-              and subject_id=$2
-              and property_key='summary'
-              and decision_reason='CATALOG_IMPORT'`,
-          [JSON.stringify(translated.slice(0,220)),r.subject_id],
-        );
       } catch {
         // segue
       }

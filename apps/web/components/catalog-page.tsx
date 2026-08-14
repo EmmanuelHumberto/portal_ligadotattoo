@@ -12,7 +12,8 @@ export async function CatalogPage({searchParams,defaultType,path,title,descripti
  Object.entries(sp).forEach(([k,v])=>typeof v==='string'&&qs.set(k,v));
  if(!qs.has('productType'))qs.set('productType',defaultType);
  const [data,facets]=await Promise.all([
-  api(`/public/products?${qs}`),api(`/public/products/facets?${qs}`),
+  api(`/public/products?${qs}`,{cache:'no-store'}),
+  api(`/public/products/facets?${qs}`,{cache:'no-store'}),
  ]);
  return <><SiteHeader/><main className="shell catalogPage">
   <header className="catalogHead"><div><p className="accent">CATÁLOGO</p>

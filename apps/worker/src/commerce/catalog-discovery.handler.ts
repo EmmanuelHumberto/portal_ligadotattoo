@@ -148,14 +148,10 @@ export class CatalogDiscoveryHandler implements JobHandler {
     const metaDesc=extractMetaDescription(html);
     if(metaDesc && metaDesc.length>20){
       await this.recordFact(productId,'description',metaDesc.slice(0,600),null,sourceUrl);
-      await this.recordFact(productId,'summary',metaDesc.slice(0,220),null,sourceUrl);
     } else {
       const text=cleanPageText(html);
       if(text.length>30){
         await this.recordFact(productId,'description',text.slice(0,600),null,sourceUrl);
-        if(text.length>80){
-          await this.recordFact(productId,'summary',text.slice(0,220),null,sourceUrl);
-        }
       }
     }
     for(const s of extractSpecTable(html)){
