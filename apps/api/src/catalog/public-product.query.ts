@@ -173,6 +173,7 @@ export class PublicProductQuery {
     return {
       ...mapSummary(row),
       machineType: row.product_type_key,
+      machineTypeLabel: humanize(row.product_type_key),
       summary: summaryFact ? String(summaryFact.value) : null,
       description: descriptionFact ? String(descriptionFact.value) : null,
       canonicalSpecifications: specFacts.map(f => ({
@@ -246,6 +247,7 @@ function mapSummary(r: any) {
       : {name:r.manufacturer_name},
     type:r.product_type_key,
     productType:r.product_type_key,
+    typeLabel:humanize(r.product_type_key),
     lifecycle:r.lifecycle,
   };
 }

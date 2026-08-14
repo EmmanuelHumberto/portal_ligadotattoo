@@ -29,7 +29,7 @@ export default async function Product({params}:{params:Promise<{slug:string}>}){
   <section className="productHero">
    <MediaGallery items={p.media??[]}/>
    <div className="summary"><span className="badge">{p.isSyntheticFixture?'DADOS SINTÉTICOS':'DADOS VERIFICADOS'}</span><h1>{p.name}</h1>
-    <p className="muted">{p.brand?.name} · {p.machineType}</p><p>{p.summary}</p>
+    <p className="muted">{p.brand?.name} · {p.machineTypeLabel??p.machineType}</p><p>{p.summary}</p>
     <dl>{(p.specifications??[]).slice(0,7).map((s:any)=><div key={s.key}><dt>{s.label}</dt><dd>{s.value}</dd></div>)}</dl>
     <a className="btn" href="#ofertas">Ver ofertas</a>
    </div>
