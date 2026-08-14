@@ -145,15 +145,17 @@ export class CatalogDiscoveryHandler implements JobHandler {
   }
 
   private async recordContent(productId:string,html:string,sourceUrl:string):Promise<void>{
-    const text=html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi,' ')
-      .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi,' ')
-      .replace(/<[^>]+>/g,' ')
-      .replace(/\s+/g,' ')
-      .trim();
-    if(text.length>30){
-      await this.recordFact(productId,'description',text.slice(0,600),null,sourceUrl);
-      if(text.length>80){
-        await this.recordFact(productId,'summary',text.slice(0,220),null,sourceUrl);
+    const metaDesc=extractMetaDescription(html);
+    if(metaDesc && metaDesc.length>20){
+      await this.recordFact(productId,'description',metaDesc.slice(0,600),null,sourceUrl);
+      await this.recordFact(productId,'summary',metaDesc.slice(0,220),null,sourceUrl);
+    } else {
+      const text=cleanPageText(html);
+      if(text.length>30){
+        await this.recordFact(productId,'description',text.slice(0,600),null,sourceUrl);
+        if(text.length>80){
+          await this.recordFact(productId,'summary',text.slice(0,220),null,sourceUrl);
+        }
       }
     }
     for(const s of extractSpecTable(html)){
@@ -291,6 +293,27 @@ function slugify(value:string){
     .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
     .replace(/[^a-z0-9]+/g,'-')
     .replace(/^-+|-+$/g,'') || 'machine';
+}
+
+function extractMetaDescription(html:string):string|null{
+  const raw=/<meta[^>]+name=["']description["'][^>]+content=["']([^"']+)["']/i.exec(html)?.[1]
+    ?? /<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']+)["']/i.exec(html)?.[1];
+  if(!raw)return null;
+  return raw.replace(/▾/g,'·').replace(/\s+/g,' ').trim();
+}
+
+function cleanPageText(html:string):string{
+  const main=/<main\b[^>]*>([\s\S]*?)<\/main>/i.exec(html)?.[1]
+    ?? /<article\b[^>]*>([\s\S]*?)<\/article>/i.exec(html)?.[1]
+    ?? html;
+  return main
+    .replace(/<(script|style|nav|header|footer|noscript|svg|form|aside)[^>]*>[\s\S]*?<\/\1>/gi,' ')
+    .replace(/<div[^>]*class=["'][^"']*(?:collapse|dropdown|mega|menu)[^"']*["'][^>]*>[\s\S]*?<\/div>/gi,' ')
+    .replace(/<img[^>]*>/gi,' ')
+    .replace(/<[^>]+>/g,' ')
+    .replace(/&[a-z#0-9]+;/gi,' ')
+    .replace(/\s+/g,' ')
+    .trim();
 }
 
 function extractSpecTable(html:string):Array<{key:string;value:string}>{
