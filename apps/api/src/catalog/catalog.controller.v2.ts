@@ -207,4 +207,32 @@ export class ProductController {
 
     return {id, name:p.name, productTypeKey:typeKey};
   }
+
+  @Patch(':id')
+  @RequireCapability('catalog.write')
+  async rename(@Param('id') id:string, @Body() body:any) {
+    const name=String(body?.name ?? '').trim();
+    if(name.length<3)throw new BadRequestException('Nome inválido (mínimo 3 caracteres)');
+    const r=await this.pool.query(
+      `update catalog.product_model
+          set name=$2, normalized_name=lower($2), version=version+1, updated_at=now()
+        where id=$1 returning id, name, slug`,
+      [id, name],
+    );
+    if(!r.rowCount)throw new NotFoundException('Produto não encontrado');
+    const p=r.rows[0];
+
+    // Re-sincroniza a busca (o título do documento é o nome do produto).
+    await this.pool.query(
+      `update search.search_document
+          set title=$2, normalized_title=lower($2),
+              search_vector = setweight(to_tsvector('simple', coalesce($2,'')),'A') ||
+                               setweight(to_tsvector('simple', coalesce(subtitle,'')),'B'),
+              updated_at=now()
+        where source_type='PRODUCT_MODEL' and source_id=$1`,
+      [id, name],
+    );
+
+    return {id, name:p.name, slug:p.slug};
+  }
 }

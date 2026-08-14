@@ -89,3 +89,19 @@ export async function setProductType(
  revalidatePath('/maquinas');
  return {ok:true};
 }
+
+export async function renameProduct(
+  _prev:ActionResult,formData:FormData,
+):Promise<ActionResult>{
+ const id=String(formData.get('id')??'').trim();
+ const name=String(formData.get('name')??'').trim();
+ if(!id||name.length<3)return {ok:false,status:422};
+ const result=await adminMutate(`/admin/products/${id}`,{
+  method:'PATCH',body:{name},
+ });
+ if(!result.ok)return {ok:false,status:result.status};
+ revalidatePath(`/admin/produtos/${id}`);
+ revalidatePath('/admin/produtos');
+ revalidatePath('/maquinas');
+ return {ok:true};
+}

@@ -2,7 +2,7 @@ import {AdminAccessState,AdminPageHeader} from '../../../../components/admin-res
 import {AdminActionForm} from '../../../../components/admin-action-form';
 import {adminApi} from '../../../../lib/admin-api';
 import {specGroupsFor} from '../../../../lib/spec-schema';
-import {saveListingUrl,saveProductSpecs,setProductType,uploadProductImage} from '../actions';
+import {renameProduct,saveListingUrl,saveProductSpecs,setProductType,uploadProductImage} from '../actions';
 
 type Detail={
  id:string;name:string;slug:string;product_type_key:string;
@@ -35,6 +35,18 @@ export default async function Page({params}:{params:Promise<{id:string}>}){
  return <>
   <AdminPageHeader eyebrow="Catálogo" title={p.name}
    description={`${p.manufacturer_name} · ${p.product_type_key}${p.model_code?` · ${p.model_code}`:''}`}/>
+
+  <AdminActionForm action={renameProduct} className="card adminForm">
+   <h2>Nome do produto</h2>
+   <p className="muted">Corrija o nome/título exibido. O slug (URL) permanece o mesmo.</p>
+   <input type="hidden" name="id" value={p.id}/>
+   <div className="adminFields">
+    <label>Nome<input name="name" defaultValue={p.name} required/></label>
+   </div>
+   <div className="adminActions">
+    <button className="primary" type="submit">Renomear</button>
+   </div>
+  </AdminActionForm>
 
   <AdminActionForm action={setProductType} className="card adminForm">
    <h2>Reclassificar tipo</h2>
