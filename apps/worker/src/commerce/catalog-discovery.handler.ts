@@ -41,6 +41,7 @@ export class CatalogDiscoveryHandler implements JobHandler {
     const pages=[
       base,
       `${base}/tattoo-machines`,`${base}/machines`,`${base}/pages/machines`,
+      `${base}/coil-machines`,`${base}/coil`,`${base}/tattoo-coil-machines`,
       `${base}/cartridges`,`${base}/power-supplies`,`${base}/batteries`,
       `${base}/accessories`,`${base}/grips`,`${base}/needles`,
       `${base}/supplies`,`${base}/inks`,
@@ -247,7 +248,7 @@ export function extractProductLinks(html:string,baseUrl:string):string[]{
     if(segs.some(s=>['login','cart','account','search','blog','news','about',
       'contact','collections','pages','pmu','smp','cosmetic'].includes(s)))
       continue;
-    if(/machine|machines|rotary|pen\b|cartridge|needle|grip|power|battery|supply|ink|cable|rca|clip\b|nova|hawk|wand|spektra|flux|xion|\bexo\b|mast|flite|stigma|torque|equalizer|proton/i.test(path)){
+    if(/machine|machines|rotary|coil|pen\b|cartridge|needle|grip|power|battery|supply|ink|cable|rca|clip\b|nova|hawk|wand|spektra|flux|xion|\bexo\b|mast|flite|stigma|torque|equalizer|proton/i.test(path)){
       const key=url.origin+url.pathname.replace(/\/$/,'');
       if(!seen.has(key)){
         seen.add(key);
@@ -270,7 +271,9 @@ function classifyProductType(name:string):string{
   if(/cartridge/i.test(n) && !/machine/i.test(n)) return 'CARTRIDGE';
   if(/power supply|power box|power pack|power unit|powerpack|fonte/i.test(n) && !/machine/i.test(n)) return 'POWER_SUPPLY';
   if(/battery|batteries|powerbolt|power bolt/i.test(n) && !/machine|pen|rotary/i.test(n)) return 'BATTERY';
-  if(/machine|rotary|wand|shader|packer|liner|coil|tattoo pen|wireless pen|power pen|pen gun|tattoo gun|tattoo kit|\bpmu\b/i.test(n)) return 'PEN';
+  if(/\bcoil\b/i.test(n)) return 'COIL';
+  if(/rotary/i.test(n)) return 'ROTARY';
+  if(/machine|tattoo pen|wireless pen|power pen|pen gun|tattoo gun|tattoo kit|\bpmu\b|wand|shader|packer|liner/i.test(n)) return 'PEN';
   if(/\bink\b|tinta|pigment|colour|color|greywash|graywash/i.test(n)
      && !/cup|cap|grip|cartridge|needle|cable|rca/i.test(n)) return 'INK';
   return 'ACCESSORY';

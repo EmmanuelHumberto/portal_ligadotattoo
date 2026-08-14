@@ -261,7 +261,8 @@ const LABELS:Record<string,string>={
   power_supply:'Fonte',voltage_range:'Tensão',rpm:'RPM (velocidade)',
   motor_type:'Tipo de motor',stroke:'Curso',weight:'Peso',
   accessories:'Acessórios',summary:'Resumo',description:'Descrição',
-  PEN:'Máquina pen',ROTARY:'Máquina rotativa',POWER_SUPPLY:'Fonte',
+  PEN:'Máquina pen',ROTARY:'Máquina rotativa',COIL:'Máquina de bobina',
+  POWER_SUPPLY:'Fonte',
   BATTERY:'Bateria',CARTRIDGE:'Cartucho',ACCESSORY:'Acessório',
   INK:'Tinta',
 };
