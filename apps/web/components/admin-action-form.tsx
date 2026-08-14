@@ -12,6 +12,7 @@ export function AdminActionForm({action,className,children}:{
  const [state,formAction]=useActionState(action,{ok:true} as ActionResult);
  return <form action={formAction} className={className}>
   {children}
+  {state.ok && state.message ? <p className="formSuccess" role="status">{state.message}</p> : null}
   {!state.ok && <p className="formError" role="alert">{actionErrorMessage(state.status)}</p>}
  </form>;
 }

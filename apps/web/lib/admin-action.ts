@@ -1,7 +1,7 @@
 import type {AdminApiStatus} from './admin-status';
 
 export type ActionResult =
- | {ok:true}
+ | {ok:true;message?:string}
  | {ok:false;status:AdminApiStatus};
 
 export function actionErrorMessage(status:AdminApiStatus):string{
