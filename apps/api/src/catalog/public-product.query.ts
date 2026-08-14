@@ -21,8 +21,11 @@ export class PublicProductQuery {
     const where: string[] = [`p.lifecycle <> 'UNKNOWN'`];
 
     if (input.productType) {
-      params.push(input.productType);
-      where.push(`p.product_type_key = $${params.length}`);
+      const types=input.productType.split(',').filter(Boolean);
+      if (types.length) {
+        params.push(types);
+        where.push(`p.product_type_key = ANY($${params.length})`);
+      }
     }
     if (input.manufacturer) {
       params.push(input.manufacturer);
@@ -204,7 +207,7 @@ export class PublicProductQuery {
     ]);
     return {
       brands: brands.rows,
-      types: types.rows,
+      types: types.rows.map((t:any)=>({...t,label:humanize(t.product_type_key)})),
       applications: [],
       priceBands: [],
     };
@@ -245,6 +248,8 @@ const LABELS:Record<string,string>={
   power_supply:'Fonte',voltage_range:'Tensão',rpm:'RPM (velocidade)',
   motor_type:'Tipo de motor',stroke:'Curso',weight:'Peso',
   accessories:'Acessórios',summary:'Resumo',description:'Descrição',
+  PEN:'Máquina pen',ROTARY:'Máquina rotativa',POWER_SUPPLY:'Fonte',
+  BATTERY:'Bateria',CARTRIDGE:'Cartucho',ACCESSORY:'Acessório',
 };
 
 function humanize(key: string) {

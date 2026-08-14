@@ -40,26 +40,25 @@ export class CatalogDiscoveryHandler implements JobHandler {
     const base=String(m.official_website).replace(/\/$/,'');
     const pages=[
       base,
-      `${base}/tattoo-machines`,
-      `${base}/machines`,
-      `${base}/pages/machines`,
+      `${base}/tattoo-machines`,`${base}/machines`,`${base}/pages/machines`,
+      `${base}/cartridges`,`${base}/power-supplies`,`${base}/batteries`,
+      `${base}/accessories`,`${base}/grips`,`${base}/needles`,
+      `${base}/supplies`,`${base}/inks`,
     ];
+    const seen=new Set<string>();
+    const links:string[]=[];
     for(const pageUrl of pages){
       let html:string;
       try { html=await this.fetchHtml(pageUrl); } catch { continue; }
-      const links=extractProductLinks(html,pageUrl);
-      if(!links.length)continue;
-      let created=0;
-      for(const url of links.slice(0,40)){
-        try {
-          if(await this.ingestProduct(m,url))created++;
-        } catch {
-          // segue
-        }
+      for(const url of extractProductLinks(html,pageUrl)){
+        if(!seen.has(url)){ seen.add(url); links.push(url); }
       }
-      return created;
     }
-    return 0;
+    let created=0;
+    for(const url of links.slice(0,80)){
+      try { if(await this.ingestProduct(m,url))created++; } catch {}
+    }
+    return created;
   }
 
   private async fetchHtml(url:string):Promise<string>{
@@ -94,9 +93,9 @@ export class CatalogDiscoveryHandler implements JobHandler {
         `insert into catalog.product_model
          (id,manufacturer_id,product_type_key,name,normalized_name,slug,
           model_code,lifecycle,version)
-         values ($1,$2,'PEN',$3,lower($3),$4,null,'ACTIVE',1)
+         values ($1,$2,$5,$3,lower($3),$4,null,'ACTIVE',1)
          returning id`,
-        [randomUUID(),m.id,name,slug],
+        [randomUUID(),m.id,name,slug,classifyProductType(name)],
       );
       productId=pm.rows[0].id;
     }
@@ -190,10 +189,9 @@ function extractProductLinks(html:string,baseUrl:string):string[]{
     if(!segs.length)continue;
     // utilitários/coleções amplas não são produtos individuais
     if(segs.some(s=>['login','cart','account','search','blog','news','about',
-      'contact','collections','pages','cartridges','needles','grips','inks',
-      'supplies','tubes','parts','merch','pmu','smp','cosmetic'].includes(s)))
+      'contact','collections','pages','pmu','smp','cosmetic'].includes(s)))
       continue;
-    if(/machine|machines|rotary|pen\b|nova|hawk|wand|spektra|flux|xion|\bexo\b|mast|flite|stigma|torque|equalizer|proton/i.test(path)){
+    if(/machine|machines|rotary|pen\b|cartridge|needle|grip|power|battery|supply|ink|cable|rca|clip\b|nova|hawk|wand|spektra|flux|xion|\bexo\b|mast|flite|stigma|torque|equalizer|proton/i.test(path)){
       const key=url.origin+url.pathname.replace(/\/$/,'');
       if(!seen.has(key)){
         seen.add(key);
@@ -205,7 +203,16 @@ function extractProductLinks(html:string,baseUrl:string):string[]{
 }
 
 function isNoise(name:string):boolean{
-  return /grip|stencil|comparison|tattoo machines|rotary machines|aftercare|hygiene|cartridge|needle|power supply|wireless thermal/i.test(name);
+  return /comparison|tattoo machines|rotary machines|stencil printer|wireless thermal/i.test(name);
+}
+
+function classifyProductType(name:string):string{
+  const n=name.toLowerCase();
+  if(/cartridge/i.test(n) && !/machine/i.test(n)) return 'CARTRIDGE';
+  if(/power supply|power box|power pack|power unit|fonte/i.test(n) && !/machine/i.test(n)) return 'POWER_SUPPLY';
+  if(/battery|batteries|powerbolt|power bolt/i.test(n) && !/machine|pen|rotary/i.test(n)) return 'BATTERY';
+  if(/machine|tattoo pen|rotary|wand|shader|packer|liner|coil/i.test(n)) return 'PEN';
+  return 'ACCESSORY';
 }
 
 function cleanProductName(rawTitle:string):string|null{

@@ -3,7 +3,9 @@ import {useRouter,useSearchParams} from 'next/navigation';
 import {useState} from 'react';
 import {track} from '../lib/analytics';
 
-export function MachineFilters({facets}:{facets:any}){
+export function MachineFilters({facets,path='/maquinas'}:{
+  facets:any;path?:string;
+}){
  const router=useRouter();const current=useSearchParams();
  const [draft,setDraft]=useState(()=>Object.fromEntries(current.entries()));
 
@@ -12,22 +14,18 @@ export function MachineFilters({facets}:{facets:any}){
   Object.entries(draft).forEach(([k,v])=>v&&p.set(k,String(v)));
   p.delete('cursor');
   track('filter_apply',{filterCount:[...p.keys()].length});
-  router.push(`/maquinas?${p.toString()}`);
+  router.push(`${path}?${p.toString()}`);
  }
  function set(k:string,v:string){setDraft(x=>({...x,[k]:v}))}
 
  return <aside className="card filters">
-  <h2>Refinar máquinas</h2>
+  <h2>Refinar</h2>
   <Select label="Marca" value={draft.manufacturer??''}
    values={facets.brands??[]} onChange={(v:string)=>set('manufacturer',v)}/>
   <Select label="Tipo" value={draft.productType??''}
    values={facets.types??[]} onChange={(v:string)=>set('productType',v)}/>
-  <Select label="Aplicação" value={draft.application??''}
-   values={facets.applications??[]} onChange={(v:string)=>set('application',v)}/>
-  <Select label="Faixa de preço" value={draft.price??''}
-   values={facets.priceBands??[]} onChange={(v:string)=>set('price',v)}/>
   <button className="btn" onClick={apply}>Aplicar filtros</button>
-  <button className="textButton" onClick={()=>router.push('/maquinas')}>
+  <button className="textButton" onClick={()=>router.push(path)}>
    Limpar filtros
   </button>
  </aside>
