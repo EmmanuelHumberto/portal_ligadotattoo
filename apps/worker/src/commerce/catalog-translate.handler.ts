@@ -53,7 +53,7 @@ export class CatalogTranslateHandler implements JobHandler {
           {role:'system',content:'Você traduz descrições de produtos de tatuagem para o português do Brasil. Traduza de forma natural e profissional. NÃO repita o nome do produto no início do texto. Mantenha termos técnicos quando apropriado (RCA, mAh, stroke, voltage, wireless, grip). Retorne APENAS o texto traduzido, sem aspas e sem comentários.'},
           {role:'user',content:text},
         ],
-        max_tokens:700,
+        max_tokens:12000,
         temperature:0.3,
       }),
     });
