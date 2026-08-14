@@ -71,9 +71,19 @@ function findPriceInJson(node:any):{amount:number;currency:string}|null{
 }
 
 function parsePrice(s:string):number|null{
-  const cleaned=String(s).replace(/[^\d.,]/g,'');
+  const cleaned=String(s).trim().replace(/[^\d.,]/g,'');
   if(!cleaned)return null;
-  const n=parseFloat(cleaned.replace(/,/g,''));
+  if(cleaned.includes(',')&&cleaned.includes('.')){
+    // vírgula de milhar + ponto decimal (ex.: 1,149.99)
+    const n=parseFloat(cleaned.replace(/,/g,''));
+    return Number.isNaN(n)?null:n;
+  }
+  if(cleaned.includes(',')){
+    // vírgula decimal europeu (ex.: 697,56)
+    const n=parseFloat(cleaned.replace(/\./g,'').replace(',','.'));
+    return Number.isNaN(n)?null:n;
+  }
+  const n=parseFloat(cleaned);
   return Number.isNaN(n)?null:n;
 }
 
