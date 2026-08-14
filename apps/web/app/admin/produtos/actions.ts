@@ -105,3 +105,28 @@ export async function renameProduct(
  revalidatePath('/maquinas');
  return {ok:true};
 }
+
+export async function updateProductMeta(
+  _prev:ActionResult,formData:FormData,
+):Promise<ActionResult>{
+ const id=String(formData.get('id')??'').trim();
+ if(!id)return {ok:false,status:422};
+ const lifecycle=String(formData.get('lifecycle')??'').trim().toUpperCase();
+ const modelCode=String(formData.get('modelCode')??'').trim();
+ const releaseDate=String(formData.get('releaseDate')??'').trim();
+ const discontinuedDate=String(formData.get('discontinuedDate')??'').trim();
+ const body:Record<string,unknown>={
+  modelCode:modelCode||null,
+  releaseDate:releaseDate||null,
+  discontinuedDate:discontinuedDate||null,
+ };
+ if(lifecycle)body.lifecycle=lifecycle;
+ const result=await adminMutate(`/admin/products/${id}/meta`,{
+  method:'PATCH',body,
+ });
+ if(!result.ok)return {ok:false,status:result.status};
+ revalidatePath(`/admin/produtos/${id}`);
+ revalidatePath('/admin/produtos');
+ revalidatePath('/maquinas');
+ return {ok:true};
+}

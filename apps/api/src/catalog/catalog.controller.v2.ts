@@ -208,6 +208,63 @@ export class ProductController {
     return {id, name:p.name, productTypeKey:typeKey};
   }
 
+  @Patch(':id/meta')
+  @RequireCapability('catalog.write')
+  async updateMeta(@Param('id') id:string, @Body() body:any) {
+    const allowed=['ANNOUNCED','ACTIVE','DISCONTINUED','LEGACY','UNKNOWN'];
+    const sets:string[] = [];
+    const values:any[] = [];
+
+    if (body.lifecycle !== undefined) {
+      const lifecycle=String(body.lifecycle ?? '').trim().toUpperCase();
+      if(!allowed.includes(lifecycle)){
+        throw new BadRequestException(`Ciclo de vida inválido: ${lifecycle}`);
+      }
+      values.push(lifecycle);
+      sets.push(`lifecycle=$${values.length}`);
+    }
+
+    if (body.modelCode !== undefined) {
+      const modelCode=(body.modelCode===null || body.modelCode==='')
+        ? null : String(body.modelCode).trim();
+      values.push(modelCode);
+      sets.push(`model_code=$${values.length}`);
+    }
+
+    if (body.releaseDate !== undefined) {
+      const v=(body.releaseDate===null || body.releaseDate==='')
+        ? null : String(body.releaseDate).trim();
+      if (v!==null && !/^\d{4}-\d{2}-\d{2}$/.test(v)){
+        throw new BadRequestException(`Data inválida (releaseDate): ${v}`);
+      }
+      values.push(v);
+      sets.push(`release_date=$${values.length}`);
+    }
+
+    if (body.discontinuedDate !== undefined) {
+      const v=(body.discontinuedDate===null || body.discontinuedDate==='')
+        ? null : String(body.discontinuedDate).trim();
+      if (v!==null && !/^\d{4}-\d{2}-\d{2}$/.test(v)){
+        throw new BadRequestException(`Data inválida (discontinuedDate): ${v}`);
+      }
+      values.push(v);
+      sets.push(`discontinued_date=$${values.length}`);
+    }
+
+    if(!sets.length) throw new BadRequestException('Nada para atualizar');
+
+    values.push(id);
+    const r=await this.pool.query(
+      `update catalog.product_model
+          set ${sets.join(', ')}, version=version+1, updated_at=now()
+        where id=$${values.length}
+        returning id, name, slug, model_code, lifecycle, release_date, discontinued_date`,
+      values,
+    );
+    if(!r.rowCount) throw new NotFoundException('Produto não encontrado');
+    return r.rows[0];
+  }
+
   @Patch(':id')
   @RequireCapability('catalog.write')
   async rename(@Param('id') id:string, @Body() body:any) {

@@ -2,11 +2,12 @@ import {AdminAccessState,AdminPageHeader} from '../../../../components/admin-res
 import {AdminActionForm} from '../../../../components/admin-action-form';
 import {adminApi} from '../../../../lib/admin-api';
 import {specGroupsFor} from '../../../../lib/spec-schema';
-import {renameProduct,saveListingUrl,saveProductSpecs,setProductType,uploadProductImage} from '../actions';
+import {renameProduct,saveListingUrl,saveProductSpecs,setProductType,updateProductMeta,uploadProductImage} from '../actions';
 
 type Detail={
  id:string;name:string;slug:string;product_type_key:string;
- manufacturer_name:string;model_code?:string|null;media_id?:string|null;
+ manufacturer_name:string;model_code?:string|null;lifecycle?:string|null;
+ release_date?:string|null;discontinued_date?:string|null;media_id?:string|null;
  listing_id?:string|null;listing_url?:string|null;
  specs?:Array<{property_key:string;value:unknown;unit:string|null}>;
 };
@@ -69,6 +70,29 @@ export default async function Page({params}:{params:Promise<{id:string}>}){
    </div>
    <div className="adminActions">
     <button className="primary" type="submit">Reclassificar</button>
+   </div>
+  </AdminActionForm>
+
+  <AdminActionForm action={updateProductMeta} className="card adminForm">
+   <h2>Metadados</h2>
+   <p className="muted">Código do modelo, ciclo de vida e datas do produto.</p>
+   <input type="hidden" name="id" value={p.id}/>
+   <div className="adminFields">
+    <label>Código do modelo<input name="modelCode" defaultValue={p.model_code??''}/></label>
+    <label>Ciclo de vida
+     <select name="lifecycle" defaultValue={p.lifecycle??'ACTIVE'}>
+      <option value="ANNOUNCED">ANNOUNCED — anunciado</option>
+      <option value="ACTIVE">ACTIVE — ativo</option>
+      <option value="DISCONTINUED">DISCONTINUED — descontinuado</option>
+      <option value="LEGACY">LEGACY — legado</option>
+      <option value="UNKNOWN">UNKNOWN — desconhecido</option>
+     </select>
+    </label>
+    <label>Data de lançamento<input name="releaseDate" type="date" defaultValue={p.release_date??''}/></label>
+    <label>Data de descontinuação<input name="discontinuedDate" type="date" defaultValue={p.discontinued_date??''}/></label>
+   </div>
+   <div className="adminActions">
+    <button className="primary" type="submit">Salvar metadados</button>
    </div>
   </AdminActionForm>
 
