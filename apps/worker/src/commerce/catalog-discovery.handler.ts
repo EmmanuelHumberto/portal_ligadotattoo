@@ -38,6 +38,14 @@ export class CatalogDiscoveryHandler implements JobHandler {
 
   private async discover(m:any):Promise<number>{
     const base=String(m.official_website).replace(/\/$/,'');
+    const shopify=await this.fetchShopifyProducts(base);
+    if(shopify){
+      let created=0;
+      for(const p of shopify.slice(0,80)){
+        try { if(await this.ingestShopifyProduct(m,base,p))created++; } catch {}
+      }
+      return created;
+    }
     const pages=[
       base,
       `${base}/tattoo-machines`,`${base}/machines`,`${base}/pages/machines`,
@@ -65,6 +73,98 @@ export class CatalogDiscoveryHandler implements JobHandler {
   private async fetchHtml(url:string):Promise<string>{
     const r=await this.http.acquire({url,allowedHosts:[],maxBytes:3_000_000});
     return r.body.toString('utf8');
+  }
+
+  private async fetchShopifyProducts(base:string):Promise<any[]|null>{
+    try {
+      const r=await this.http.acquire({
+        url:`${base}/products.json?limit=250`,allowedHosts:[],maxBytes:5_000_000,timeoutMs:20_000,
+      });
+      const data=JSON.parse(r.body.toString('utf8'));
+      return Array.isArray(data?.products) && data.products.length ? data.products : null;
+    } catch {
+      return null;
+    }
+  }
+
+  private async ingestShopifyProduct(m:any,base:string,p:any):Promise<boolean>{
+    const rawTitle=String(p.title ?? '').trim();
+    const name=cleanProductName(rawTitle) ?? rawTitle;
+    if(!name || isNoise(name))return false;
+    const slug=slugify(name);
+    const handle=String(p.handle ?? '');
+    const url=handle ? `${base}/products/${handle}` : base;
+    const productType=String(p.product_type ?? '');
+    const tags=Array.isArray(p.tags) ? p.tags.map((x:unknown)=>String(x)) : [];
+
+    let productId=null;
+    const existing=await this.pool.query(
+      `select id from catalog.product_model
+        where manufacturer_id=$1 and slug=$2 limit 1`,[m.id,slug],
+    );
+    if(existing.rowCount){
+      productId=existing.rows[0].id;
+    } else {
+      const pm=await this.pool.query(
+        `insert into catalog.product_model
+         (id,manufacturer_id,product_type_key,name,normalized_name,slug,
+          model_code,lifecycle,version)
+         values ($1,$2,$5,$3,lower($3),$4,null,'ACTIVE',1)
+         returning id`,
+        [randomUUID(),m.id,name,slug,classifyProductType(name,productType,tags)],
+      );
+      productId=pm.rows[0].id;
+    }
+
+    await this.pool.query(
+      `insert into commerce.listing
+       (id,seller_id,product_model_id,external_id,url,normalized_url,
+        affiliate_mode,availability,status,last_observed_at,version)
+       select $1, s.id, $2, $3, $4, $4, 'NONE','IN_STOCK','ACTIVE',now(),1
+         from commerce.seller s
+        where s.slug=$5
+          and not exists (
+            select 1 from commerce.listing li
+             where li.normalized_url=$4
+          )`,
+      [randomUUID(),productId,slug,url,m.slug],
+    );
+
+    const imgUrl=Array.isArray(p.images) && p.images[0]?.src
+      ? String(p.images[0].src) : undefined;
+    if(imgUrl){
+      const hasImg=await this.pool.query(
+        `select 1 from media.media_link
+          where subject_type='PRODUCT_MODEL' and subject_id=$1 limit 1`,[productId],
+      );
+      if(!hasImg.rowCount){
+        const mediaId=await this.downloadImage(imgUrl,String(m.name));
+        if(mediaId){
+          await this.pool.query(
+            `insert into media.media_link
+             (id,media_asset_id,subject_type,subject_id,role,is_primary,sort_order)
+             select gen_random_uuid(),$1,'PRODUCT_MODEL',$2,'hero',true,0
+              where not exists (
+                select 1 from media.media_link
+                 where subject_type='PRODUCT_MODEL' and subject_id=$2
+              )`,
+            [mediaId,productId],
+          );
+        }
+      }
+    }
+
+    const hasFact=await this.pool.query(
+      `select 1 from knowledge.canonical_fact
+        where subject_type='PRODUCT_MODEL' and subject_id=$1 limit 1`,[productId],
+    );
+    if(!hasFact.rowCount){
+      const desc=cleanShopifyBody(p.body_html);
+      if(desc && desc.length>20){
+        await this.recordFact(productId,'description',desc.slice(0,600),null,url);
+      }
+    }
+    return true;
   }
 
   private async ingestProduct(m:any,url:string):Promise<boolean>{
@@ -266,13 +366,15 @@ function isNoise(name:string):boolean{
   return /comparison|tattoo machines|rotary machines|stencil printer|wireless thermal/i.test(n);
 }
 
-function classifyProductType(name:string):string{
+function classifyProductType(name:string,productType?:string,tags?:string[]):string{
   const n=name.toLowerCase();
+  const t=(productType??'').toLowerCase();
+  const g=(tags??[]).join(' ').toLowerCase();
   if(/cartridge/i.test(n) && !/machine/i.test(n)) return 'CARTRIDGE';
   if(/power supply|power box|power pack|power unit|powerpack|fonte/i.test(n) && !/machine/i.test(n)) return 'POWER_SUPPLY';
   if(/battery|batteries|powerbolt|power bolt/i.test(n) && !/machine|pen|rotary/i.test(n)) return 'BATTERY';
-  if(/\bcoil\b/i.test(n)) return 'COIL';
-  if(/rotary/i.test(n)) return 'ROTARY';
+  if(/\bcoil\b/i.test(`${n} ${t} ${g}`) && !/cores?\b|washers?\b|\bcoils\b/i.test(n)) return 'COIL';
+  if(/rotary/i.test(`${n} ${g}`)) return 'ROTARY';
   if(/machine|tattoo pen|wireless pen|power pen|pen gun|tattoo gun|tattoo kit|\bpmu\b|wand|shader|packer|liner/i.test(n)) return 'PEN';
   if(/\bink\b|tinta|pigment|colour|color|greywash|graywash/i.test(n)
      && !/cup|cap|grip|cartridge|needle|cable|rca/i.test(n)) return 'INK';
@@ -294,6 +396,17 @@ export function slugify(value:string){
     .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
     .replace(/[^a-z0-9]+/g,'-')
     .replace(/^-+|-+$/g,'') || 'machine';
+}
+
+function cleanShopifyBody(bodyHtml:unknown):string{
+  const html=typeof bodyHtml==='string' ? bodyHtml : '';
+  if(!html)return '';
+  return html
+    .replace(/<(script|style|noscript|svg)[^>]*>[\s\S]*?<\/\1>/gi,' ')
+    .replace(/<[^>]+>/g,' ')
+    .replace(/&[a-z#0-9]+;/gi,' ')
+    .replace(/\s+/g,' ')
+    .trim();
 }
 
 function extractMetaDescription(html:string):string|null{
