@@ -14,6 +14,9 @@ export default function Home(){
      <Link className="secondary" href="/noticias">Ver conteúdo</Link>
     </div>
    </section>
+   <section className="heroArt">
+    <img src="/portal-hero.png" alt="Arte do Portal Tattoo" className="heroImage"/>
+   </section>
   </main>
  </>;
 }
