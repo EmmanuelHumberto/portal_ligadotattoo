@@ -27,7 +27,7 @@ export default async function Page({searchParams}:{searchParams:Promise<{type?:s
    <p className="muted">O essencial é o <strong>texto</strong> (e a imagem). O link é opcional — serve só para atribuir a fonte e tentar extrair a imagem automaticamente.</p>
    <div className="adminFields">
     <label>Texto da postagem<textarea name="text" rows={10} placeholder="Cole aqui o texto completo da postagem."/></label>
-    <label>Imagem (enviar arquivo)<input type="file" name="imageFile" accept="image/*"/></label>
+    <label>Imagem (enviar arquivo — pode selecionar várias)<input type="file" name="imageFiles" accept="image/*" multiple/></label>
     <label>ou URL da imagem (opcional)<input name="imageUrl" placeholder="https://.../imagem.jpg — se deixar vazio, tenta extrair do link"/></label>
     <label>Link da postagem (opcional — para atribuição da fonte)<input name="url" placeholder="https://www.linkedin.com/... ou https://www.instagram.com/..." style={{minWidth:360}}/></label>
    </div>

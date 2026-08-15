@@ -66,11 +66,14 @@ export class GenerateAIDraftHandler {
     });
 
     const draft=normalizeDraft(result.output, title || sourceUrl, input.requestedType ?? candidate?.detected_type);
-    if (candidate?.image_media_id) {
-      draft.body.blocks=[
-        {type:'image' as const, mediaId:String(candidate.image_media_id)},
-        ...draft.body.blocks,
-      ];
+    const extraMediaIds=(candidate?.structured_data && typeof candidate.structured_data==='object'
+      ? (candidate.structured_data as Record<string,unknown>).mediaIds
+      : null);
+    const imageBlocks=[candidate?.image_media_id, ...(Array.isArray(extraMediaIds)?extraMediaIds:[])]
+      .filter(Boolean)
+      .map((id:unknown)=>({type:'image' as const, mediaId:String(id)}));
+    if (imageBlocks.length) {
+      draft.body.blocks=[...imageBlocks, ...draft.body.blocks];
     }
 
     const content=await this.createEditorial.execute({

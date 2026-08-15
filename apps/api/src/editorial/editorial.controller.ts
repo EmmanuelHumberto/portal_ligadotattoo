@@ -96,6 +96,9 @@ export class EditorialController {
     if(text){
       const title=(text.split(/\n/)[0] ?? '').slice(0,140) || url || 'Postagem de rede social';
       const fingerprint=createHash('sha256').update(text).digest('hex');
+      const mediaIds=Array.isArray(body?.mediaIds)
+        ? body.mediaIds.map((x:unknown)=>String(x)).filter(Boolean)
+        : (body?.mediaId ? [String(body.mediaId)] : []);
       const snapshotId=randomUUID();
       // Hash único por importação (com salt) para nunca conflitar com snapshots anteriores.
       const snapshotSha=createHash('sha256').update(text+':'+snapshotId).digest('hex');
@@ -108,15 +111,15 @@ export class EditorialController {
       await this.pool.query(
         `insert into ingestion.extraction
          (id,snapshot_id,title,text_content,structured_data,fingerprint,created_at)
-         values (gen_random_uuid(),$1,$2,$3,'{}'::jsonb,$4,now())`,
-        [snapshotId,title,text,fingerprint],
+         values (gen_random_uuid(),$1,$2,$3,$4::jsonb,$5,now())`,
+        [snapshotId,title,text,JSON.stringify({mediaIds}),fingerprint],
       );
       const candidateId=randomUUID();
       await this.pool.query(
         `insert into editorial.story_candidate
          (id,source_id,source_snapshot_id,source_url,title,detected_type,verbatim,image_media_id,status,created_at)
          values ($1,$2,$3,$4,$5,'BLOG',true,$6,'NEW',now())`,
-        [candidateId,sourceId,snapshotId,url,title, body?.mediaId ?? null],
+        [candidateId,sourceId,snapshotId,url,title, mediaIds[0] ?? null],
       );
       await this.pool.query(
         `insert into ops.job
