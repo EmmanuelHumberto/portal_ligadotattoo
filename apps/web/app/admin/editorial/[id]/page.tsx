@@ -31,7 +31,7 @@ export default async function Page({params}:{params:Promise<{id:string}>}){
   <Workflow content={content}/>
   {content.status==='DRAFT'&&<>
    <EditorForm content={content}/>
-   <AdminActionForm action={attachMedia} encType="multipart/form-data" className="card panel">
+   <AdminActionForm action={attachMedia} className="card panel">
     <h2>Anexar imagem</h2>
     <input type="hidden" name="id" value={content.id}/>
     <div className="adminFields">
