@@ -23,7 +23,8 @@ export class CatalogDiscoveryHandler implements JobHandler {
   async handle():Promise<JobResult>{
     const manufacturers=await this.pool.query(
       `select id,name,slug,official_website from catalog.manufacturer
-        where official_website is not null and slug<>'fixture-tattoo-labs'`,
+        where official_website is not null and slug<>'fixture-tattoo-labs'
+          and not exclude_from_discovery`,
     );
     let created=0;
     for(const m of manufacturers.rows){
