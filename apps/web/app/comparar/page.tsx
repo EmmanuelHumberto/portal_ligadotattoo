@@ -7,7 +7,7 @@ const RADAR_AXES=[
  {label:'Curso',keys:['stroke']},
  {label:'Bateria',keys:['battery_capacity','capacity','battery']},
  {label:'Peso',keys:['weight']},
- {label:'Comprimento',keys:['length','diameter']},
+ {label:'Tensão',keys:['voltage_range','voltage','motor_nominal_voltage','input-voltage','output-voltage']},
  {label:'Protrusão do grip',keys:['grip_protrusion']},
 ];
 
