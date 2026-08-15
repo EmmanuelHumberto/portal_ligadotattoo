@@ -1,7 +1,7 @@
 const base=process.env.API_INTERNAL_URL ?? 'http://api:3000';
 export async function api(path:string,options?:{cache?:RequestCache}){
  const r=await fetch(base+path,
-  options?.cache ? {cache:options.cache} : {next:{revalidate:60}},
+  {cache:options?.cache ?? 'no-store'},
  );
  if(!r.ok) throw new ApiResponseError(r.status);
  return r.json();
