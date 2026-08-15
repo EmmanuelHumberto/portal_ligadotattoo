@@ -1,0 +1,16 @@
+# Caddy — proxy reverso com HTTPS automático (Let's Encrypt).
+# Aponte o DNS do domínio e dos subdomínios para o IP da VM antes de subir.
+
+{$SITE_DOMAIN} {
+	encode gzip
+	reverse_proxy web:3000
+}
+
+api.{$SITE_DOMAIN} {
+	encode gzip
+	reverse_proxy api:3001
+}
+
+media.{$SITE_DOMAIN} {
+	reverse_proxy minio:9000
+}
