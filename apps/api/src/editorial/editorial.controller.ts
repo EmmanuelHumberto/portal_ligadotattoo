@@ -40,8 +40,8 @@ export class EditorialController {
 
   @Get('admin/editorial')
   @RequireCapability('editorial.read')
-  adminList(@Query('status') status?:string) {
-    return this.query.adminList(status);
+  adminList(@Query('status') status?:string,@Query('type') type?:string) {
+    return this.query.adminList(status,type);
   }
 
   @Get('admin/editorial/candidates')

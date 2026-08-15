@@ -6,10 +6,19 @@ import {createEditorialDraft} from './actions';
 
 type Rows={items:Record<string,unknown>[]};
 
-export default async function Page(){
- const result=await adminApi<Rows>('/admin/editorial');
+export default async function Page({searchParams}:{searchParams:Promise<{type?:string}>}){
+ const {type}=await searchParams;
+ const result=await adminApi<Rows>(`/admin/editorial${type?`?type=${type}`:''}`);
+ const filter=(t?:string)=>t===type?'primary':'secondary';
  return <>
   <AdminPageHeader eyebrow="Conteúdo" title="Editorial" description="Acompanhe pautas, revisão, agendamento e publicação."/>
+  <div className="adminActions" style={{marginBottom:18}}>
+   <Link className={filter(undefined)} href="/admin/editorial">Todos</Link>
+   <Link className={filter('BLOG')} href="/admin/editorial?type=BLOG">Blog</Link>
+   <Link className={filter('NEWS')} href="/admin/editorial?type=NEWS">Notícias</Link>
+   <Link className={filter('EVENT')} href="/admin/editorial?type=EVENT">Eventos</Link>
+   <Link className={filter('TECHNICAL_ARTICLE')} href="/admin/editorial?type=TECHNICAL_ARTICLE">Técnico</Link>
+  </div>
   <div className="adminActions" style={{marginBottom:18}}>
    <Link className="secondary" href="/admin/editorial/candidatos">Candidatos e fluxo automático</Link>
    <Link className="secondary" href="/admin/editorial/temas">Descoberta por tema</Link>

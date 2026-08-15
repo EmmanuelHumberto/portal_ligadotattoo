@@ -49,14 +49,15 @@ export class EditorialQuery {
     return publicDto(r.rows[0],mediaUrls);
   }
 
-  async adminList(status?:string,limit=50) {
+  async adminList(status?:string,type?:string,limit=50) {
     const r=await this.pool.query(
       `select id,content_type,slug,title,status,origin,created_by,
               scheduled_at,published_at,version,updated_at
          from editorial.content
         where ($1::text is null or status=$1)
-        order by updated_at desc limit $2`,
-      [status ?? null,Math.min(Math.max(limit,1),100)],
+          and ($2::text is null or content_type=$2)
+        order by updated_at desc limit $3`,
+      [status ?? null,type ?? null,Math.min(Math.max(limit,1),100)],
     );
     return {items:r.rows};
   }
