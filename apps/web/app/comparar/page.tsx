@@ -2,6 +2,14 @@ import {api} from '../../lib/api';
 import {SiteHeader} from '../../components/site-header';
 
 const RADAR_COLORS=['#c9a66b','#5aa9e6','#e66b5a','#7fd69a'];
+const RADAR_AXES=[
+ {label:'RPM / Hz',keys:['rpm','motor_rpm','frequency']},
+ {label:'Curso',keys:['stroke']},
+ {label:'Bateria',keys:['battery_capacity','capacity','battery']},
+ {label:'Peso',keys:['weight']},
+ {label:'Comprimento',keys:['length','diameter']},
+ {label:'Protrusão do grip',keys:['grip_protrusion']},
+];
 
 export default async function Compare({searchParams}:{searchParams:Promise<any>}){
  const {ids=''}=await searchParams;
@@ -40,37 +48,38 @@ function toNumber(v:any):number|null{
  return null;
 }
 
-function RadarChart({items}:{items:any[]}){
- const axisMap=new Map<string,{key:string;label:string}>();
- for(const it of items){
-  for(const s of it.canonicalSpecifications??[]){
-   if(toNumber(s.value)==null)continue;
-   if(!axisMap.has(s.key))axisMap.set(s.key,{key:s.key,label:s.label??s.name??s.key});
-  }
+function numFor(it:any,keys:string[]):number|null{
+ for(const k of keys){
+  const s=it.canonicalSpecifications?.find((x:any)=>x.key===k);
+  if(s){const v=toNumber(s.value);if(v!=null)return v;}
  }
- const axes=[...axisMap.values()];
- if(axes.length<3)return <div className="card emptyState">Dados numéricos insuficientes para o gráfico de radar.</div>;
+ return null;
+}
+
+function RadarChart({items}:{items:any[]}){
+ const axes=RADAR_AXES.filter(a=>items.some(it=>numFor(it,a.keys)!=null));
+ if(axes.length<2)return <div className="card emptyState">Dados numéricos insuficientes para o gráfico de radar.</div>;
  const n=axes.length;
  const size=380,cx=size/2,cy=size/2,r=140;
  const angle=(i:number)=>Math.PI*2*i/n-Math.PI/2;
  const point=(i:number,v:number)=>({x:cx+r*v*Math.cos(angle(i)),y:cy+r*v*Math.sin(angle(i))});
- const num=(it:any,key:string)=>{
-  const s=it.canonicalSpecifications?.find((x:any)=>x.key===key);
-  return s?toNumber(s.value):null;
- };
  const ranges=axes.map(a=>{
-  const vals=items.map(it=>num(it,a.key)).filter((x):x is number=>x!=null);
+  const vals=items.map(it=>numFor(it,a.keys)).filter((x):x is number=>x!=null);
   return {min:Math.min(...vals),max:Math.max(...vals)};
  });
- const norm=(i:number,v:number)=>{const r=ranges[i]!;return r.max===r.min?0.5:(v-r.min)/(r.max-r.min);};
+ const norm=(i:number,v:number|null)=>{
+  const r=ranges[i]!;
+  if(v==null)return 0;
+  return r.max===r.min?0.5:(v-r.min)/(r.max-r.min);
+ };
  return <div className="card radarCard">
   <h2>Radar comparativo</h2>
   <div className="radarWrap">
    <svg viewBox={`0 0 ${size} ${size}`} className="radar" role="img" aria-label="Gráfico de radar comparativo">
     {[0.25,0.5,0.75,1].map(ring=>(<polygon key={ring} points={axes.map((_,i)=>{const p=point(i,ring);return `${p.x},${p.y}`}).join(' ')} className="radarRing"/>))}
-    {axes.map((a,i)=>{const p=point(i,1);return <line key={a.key} x1={cx} y1={cy} x2={p.x} y2={p.y} className="radarAxis"/>;})}
-    {axes.map((a,i)=>{const p=point(i,1.18);return <text key={a.key} x={p.x} y={p.y} className="radarLabel" textAnchor="middle" dominantBaseline="middle">{a.label}</text>;})}
-    {items.map((it,idx)=>{const pts=axes.map((a,i)=>{const v=num(it,a.key);return point(i,v==null?0:norm(i,v));});return <polygon key={it.id} points={pts.map(p=>`${p.x},${p.y}`).join(' ')} fill={RADAR_COLORS[idx%RADAR_COLORS.length]} fillOpacity={0.22} stroke={RADAR_COLORS[idx%RADAR_COLORS.length]} strokeWidth={2}/>;})}
+    {axes.map((a,i)=>{const p=point(i,1);return <line key={a.label} x1={cx} y1={cy} x2={p.x} y2={p.y} className="radarAxis"/>;})}
+    {axes.map((a,i)=>{const p=point(i,1.18);return <text key={a.label} x={p.x} y={p.y} className="radarLabel" textAnchor="middle" dominantBaseline="middle">{a.label}</text>;})}
+    {items.map((it,idx)=>{const pts=axes.map((a,i)=>{const v=numFor(it,a.keys);return point(i,norm(i,v));});return <polygon key={it.id} points={pts.map(p=>`${p.x},${p.y}`).join(' ')} fill={RADAR_COLORS[idx%RADAR_COLORS.length]} fillOpacity={0.22} stroke={RADAR_COLORS[idx%RADAR_COLORS.length]} strokeWidth={2}/>;})}
    </svg>
    <div className="radarLegend">{items.map((it,idx)=><span key={it.id} className="legendItem"><i style={{background:RADAR_COLORS[idx%RADAR_COLORS.length]}}/>{it.name}</span>)}</div>
   </div>
