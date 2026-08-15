@@ -114,9 +114,9 @@ export class EditorialController {
       const candidateId=randomUUID();
       await this.pool.query(
         `insert into editorial.story_candidate
-         (id,source_id,source_snapshot_id,source_url,title,detected_type,verbatim,status,created_at)
-         values ($1,$2,$3,$4,$5,'BLOG',true,'NEW',now())`,
-        [candidateId,sourceId,snapshotId,url,title],
+         (id,source_id,source_snapshot_id,source_url,title,detected_type,verbatim,image_media_id,status,created_at)
+         values ($1,$2,$3,$4,$5,'BLOG',true,$6,'NEW',now())`,
+        [candidateId,sourceId,snapshotId,url,title, body?.mediaId ?? null],
       );
       await this.pool.query(
         `insert into ops.job
@@ -126,14 +126,16 @@ export class EditorialController {
            where deduplication_key is not null do nothing`,
         [JSON.stringify({candidateId}),'auto-draft:'+candidateId],
       );
-      await this.pool.query(
-        `insert into ops.job
-         (id,job_type,job_version,payload,status,available_at,deduplication_key)
-         values (gen_random_uuid(),'editorial.extract_image',1,$1::jsonb,'PENDING',now(),$2)
-         on conflict (job_type,deduplication_key)
-           where deduplication_key is not null do nothing`,
-        [JSON.stringify({candidateId,url,imageUrl:String(body?.imageUrl ?? '')}),'extract-image:'+candidateId],
-      );
+      if(!body?.mediaId){
+        await this.pool.query(
+          `insert into ops.job
+           (id,job_type,job_version,payload,status,available_at,deduplication_key)
+           values (gen_random_uuid(),'editorial.extract_image',1,$1::jsonb,'PENDING',now(),$2)
+           on conflict (job_type,deduplication_key)
+             where deduplication_key is not null do nothing`,
+          [JSON.stringify({candidateId,url,imageUrl:String(body?.imageUrl ?? '')}),'extract-image:'+candidateId],
+        );
+      }
       return {enqueued:1,candidateId,mode:'manual'};
     }
 

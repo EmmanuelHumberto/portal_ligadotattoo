@@ -2,7 +2,7 @@
 
 import {revalidatePath} from 'next/cache';
 import {redirect} from 'next/navigation';
-import {adminMutate} from '../../../lib/admin-api';
+import {adminMutate,adminUpload} from '../../../lib/admin-api';
 import type {ActionResult} from '../../../lib/admin-action';
 
 const EDITORIAL_BASE='/admin/editorial';
@@ -194,8 +194,16 @@ export async function ingestSocial(
   return {ok:false,status:422,
    message:'O texto colado parece muito curto (provavelmente só o título). Cole o conteúdo COMPLETO da postagem.'};
  }
+ // Upload da imagem, se um arquivo foi enviado.
+ const file=formData.get('imageFile');
+ let mediaId:string|undefined;
+ if(file instanceof File && file.size>0){
+  const up=await adminUpload<{id:string}>('/admin/media/upload', file);
+  if(!up.ok)return {ok:false,status:up.status};
+  mediaId=up.data.id;
+ }
  const result=await adminMutate<{mode?:string}>('/admin/editorial/ingest-social',{
-  method:'POST',body:{url,text,imageUrl},
+  method:'POST',body:{url,text,imageUrl,mediaId},
  });
  if(!result.ok)return {ok:false,status:result.status};
  revalidatePath('/admin/editorial');
