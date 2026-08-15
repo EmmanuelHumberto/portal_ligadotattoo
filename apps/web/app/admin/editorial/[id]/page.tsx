@@ -6,7 +6,7 @@ import {
   approveDraft,approveEditorial,publishEditorial,
   removeEditorial,scheduleEditorial,submitEditorial,unpublishEditorial,
 } from '../actions';
-import {updateEditorial} from './actions';
+import {attachMedia,updateEditorial} from './actions';
 
 type Detail={
  id:string;contentType:string;slug:string;title:string;
@@ -29,7 +29,17 @@ export default async function Page({params}:{params:Promise<{id:string}>}){
   <AdminPageHeader eyebrow="Conteúdo" title={content.title}
    description={`${content.contentType} · ${content.status} · versão ${content.version}`}/>
   <Workflow content={content}/>
-  {content.status==='DRAFT'&&<EditorForm content={content}/>}
+  {content.status==='DRAFT'&&<>
+   <EditorForm content={content}/>
+   <AdminActionForm action={attachMedia} encType="multipart/form-data" className="card panel">
+    <h2>Anexar imagem</h2>
+    <input type="hidden" name="id" value={content.id}/>
+    <div className="adminFields">
+     <label>Imagem<input type="file" name="file" accept="image/*" required/></label>
+    </div>
+    <div className="adminActions"><button className="secondary" type="submit">Enviar e anexar</button></div>
+   </AdminActionForm>
+  </>}
   <div className="card panel">
    <h2>Conteúdo</h2>
    {content.subtitle&&<p className="muted">{content.subtitle}</p>}
