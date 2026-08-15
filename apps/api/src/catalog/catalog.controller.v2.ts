@@ -292,4 +292,21 @@ export class ProductController {
 
     return {id, name:p.name, slug:p.slug};
   }
+
+  @Post('discovery/run')
+  @RequireCapability('catalog.write')
+  async runDiscovery(@Body() body:any) {
+    const manufacturerSlug=String(body?.manufacturerSlug ?? '').trim();
+    const machinesOnly=Boolean(body?.machinesOnly);
+    const r=await this.pool.query(
+      `insert into ops.job
+       (id,job_type,job_version,payload,status,available_at,deduplication_key)
+       values (gen_random_uuid(),'catalog.discover_machines',1,$1::jsonb,'PENDING',now(),$2)
+       on conflict (job_type,deduplication_key)
+         where deduplication_key is not null do nothing`,
+      [JSON.stringify({manufacturerSlug,machinesOnly}),
+       'discovery:'+(manufacturerSlug||'all')+':'+(machinesOnly?'machines':'all')+':'+new Date().toISOString().slice(0,16)],
+    );
+    return {enqueued:r.rowCount ?? 0, manufacturerSlug:manufacturerSlug||null, machinesOnly};
+  }
 }

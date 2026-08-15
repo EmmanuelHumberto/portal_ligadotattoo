@@ -11,6 +11,7 @@ const IMAGE_EXT:Record<string,string>={
 
 export class CatalogDiscoveryHandler implements JobHandler {
   readonly type='catalog.discover_machines';
+  private machinesOnly=false;
 
   constructor(
     private readonly pool:Pool,
@@ -20,11 +21,16 @@ export class CatalogDiscoveryHandler implements JobHandler {
     private readonly bucket:string,
   ) {}
 
-  async handle():Promise<JobResult>{
+  async handle(payload:unknown):Promise<JobResult>{
+    const p=(payload ?? {}) as Record<string,unknown>;
+    this.machinesOnly=Boolean(p.machinesOnly);
+    const slug=String(p.manufacturerSlug ?? '').trim();
     const manufacturers=await this.pool.query(
       `select id,name,slug,official_website from catalog.manufacturer
         where official_website is not null and slug<>'fixture-tattoo-labs'
-          and not exclude_from_discovery`,
+          and not exclude_from_discovery
+          and ($1::text='' or slug=$1)`,
+      [slug],
     );
     let created=0;
     for(const m of manufacturers.rows){
@@ -182,6 +188,9 @@ export class CatalogDiscoveryHandler implements JobHandler {
     const name=input.name;
     const slug=slugify(name);
     if(!name || isNoise(name))return false;
+    if(this.machinesOnly && !['PEN','ROTARY','COIL','POWER_SUPPLY','BATTERY'].includes(input.category)){
+      return false;
+    }
 
     let productId=null;
     const existing=await this.pool.query(
