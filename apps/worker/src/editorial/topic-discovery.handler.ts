@@ -43,7 +43,7 @@ export class TopicDiscoveryHandler implements JobHandler {
                  'PENDING',now(),$2)
          on conflict (job_type,deduplication_key)
            where deduplication_key is not null do nothing`,
-        [JSON.stringify({sourceId,url:it.link,title:it.title}),'topic-article:'+it.link],
+        [JSON.stringify({sourceId,url:it.link,title:it.title,requestedType:'BLOG'}),'topic-article:'+it.link],
       );
       n += res.rowCount ?? 0;
     }
