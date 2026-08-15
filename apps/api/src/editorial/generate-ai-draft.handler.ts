@@ -49,11 +49,11 @@ export class GenerateAIDraftHandler {
         requestedType:input.requestedType,
         instructions:[
           'Write the entire article in Brazilian Portuguese (pt-BR).',
-          'Do not invent technical specifications, mechanisms, or construction details. Never add mechanical explanations, components, or counts that are not explicitly stated in the source.',
-          'Stick strictly to the source text. If the source does not mention a detail, omit it instead of guessing.',
+          'The source text is the full content of the post. Reproduce it faithfully: do NOT rewrite, paraphrase, expand, or add any facts, examples, mechanisms, components, or details that are not in the source.',
+          'Your only job is to structure the source: generate a title, subtitle, and summary from it, and split the source text into logical paragraphs/blocks, keeping the original wording verbatim.',
+          'Do not invent technical specifications, mechanisms, or construction details.',
           'Preserve source attribution.',
-          'Mark uncertainty in draft text.',
-          'Return ONLY a JSON object with this exact schema: {"title": string, "subtitle": string|null, "summary": string, "body": {"version": 1, "blocks": [{"type": "heading"|"paragraph"|"quote"|"callout", "text": string, "level"?: number, "attribution"?: string}]}}. Write the article as a sequence of blocks; each block has a "type" and a "text".',
+          'Return ONLY a JSON object with this exact schema: {"title": string, "subtitle": string|null, "summary": string, "body": {"version": 1, "blocks": [{"type": "heading"|"paragraph"|"quote"|"callout", "text": string, "level"?: number, "attribution"?: string}]}}. The body blocks must contain the source text verbatim, only split into paragraphs.',
         ],
       },
     });
