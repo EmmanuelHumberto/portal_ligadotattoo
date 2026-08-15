@@ -129,15 +129,19 @@ function Workflow({content}:{content:Detail}){
 }
 
 function EditorForm({content}:{content:Detail}){
+ const text=(content.body?.blocks ?? [])
+  .filter(b=>b.type==='paragraph'||b.type==='heading')
+  .map(b=>String(b.text??''))
+  .join('\n\n');
  return <AdminActionForm action={updateEditorial} className="card panel">
   <h2>Editar rascunho</h2>
-  <p className="muted">Edite o texto e o corpo (blocos em JSON). Imagens usam <code>{'{"type":"image","mediaId":"<uuid>"}'}</code>.</p>
+  <p className="muted">Escreva o texto. Separe parágrafos com uma linha em branco.</p>
   <input type="hidden" name="id" value={content.id}/>
   <div className="adminFields">
    <label>Título<input name="title" defaultValue={content.title}/></label>
    <label>Subtítulo<input name="subtitle" defaultValue={content.subtitle??''}/></label>
    <label>Resumo<textarea name="summary" rows={2} defaultValue={content.summary??''}/></label>
-   <label>Corpo (blocos JSON)<textarea name="body" rows={16} className="mono" defaultValue={JSON.stringify(content.body ?? {version:1,blocks:[]}, null, 2)}/></label>
+   <label>Texto do post<textarea name="text" rows={14} defaultValue={text} placeholder="Escreva o conteúdo do post aqui."/></label>
   </div>
   <div className="adminActions">
    <button className="primary" type="submit">Salvar rascunho</button>

@@ -1,6 +1,7 @@
 'use server';
 
 import {revalidatePath} from 'next/cache';
+import {redirect} from 'next/navigation';
 import {adminMutate} from '../../../lib/admin-api';
 import type {ActionResult} from '../../../lib/admin-action';
 
@@ -158,4 +159,22 @@ function idVersion(formData:FormData){
   id,
   version:Number.isInteger(version)&&version>0 ? version : null,
  };
+}
+
+export async function createPost(_prev:ActionResult,formData:FormData):Promise<ActionResult>{
+ const title=String(formData.get('title')??'').trim();
+ const subtitle=String(formData.get('subtitle')??'').trim();
+ const summary=String(formData.get('summary')??'').trim();
+ const text=String(formData.get('text')??'').trim();
+ if(!title)return {ok:false,status:422};
+ const blocks=text
+  ? text.split(/\n\s*\n/).filter(Boolean)
+     .map(p=>({type:'paragraph',text:p.trim()}))
+  : [];
+ const result=await adminMutate<{id:string}>(EDITORIAL_BASE,{
+  method:'POST',
+  body:{contentType:'BLOG',title,slug:slugify(title),subtitle,summary,body:{version:1,blocks}},
+ });
+ if(!result.ok)return {ok:false,status:result.status};
+ redirect(`/admin/editorial/${result.data.id}`);
 }

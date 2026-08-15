@@ -11,17 +11,25 @@ export async function updateEditorial(
  const title=String(formData.get('title')??'').trim();
  const subtitle=String(formData.get('subtitle')??'').trim();
  const summary=String(formData.get('summary')??'').trim();
- const bodyJson=String(formData.get('body')??'');
- let body:any;
- try{body=bodyJson?JSON.parse(bodyJson):{version:1,blocks:[]};}
- catch{return {ok:false,status:422};}
+ const text=String(formData.get('text')??'').trim();
  if(!id||!title)return {ok:false,status:422};
+
+ // Preserva blocos não-textuais (imagens etc.) e substitui os de texto.
+ const current=await adminApi<{body?:{version:number;blocks:Array<any>}}>(`/admin/editorial/${id}`);
+ const existing=current.ok ? (current.data.body?.blocks ?? []) : [];
+ const nonText=existing.filter(b=>b.type!=='paragraph' && b.type!=='heading');
+ const textBlocks=text
+  ? text.split(/\n\s*\n/).filter(Boolean).map(p=>({type:'paragraph',text:p.trim()}))
+  : [];
+ const blocks=[...textBlocks,...nonText];
+
  const result=await adminMutate(`/admin/editorial/${id}`,{
-  method:'PATCH',body:{title,subtitle,summary,body},
+  method:'PATCH',
+  body:{title,subtitle,summary,body:{version:1,blocks}},
  });
  if(!result.ok)return {ok:false,status:result.status};
  revalidatePath(`/admin/editorial/${id}`);
- return {ok:true};
+ return {ok:true,message:'Rascunho salvo.'};
 }
 
 export async function attachMedia(

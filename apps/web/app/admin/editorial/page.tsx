@@ -13,6 +13,7 @@ export default async function Page({searchParams}:{searchParams:Promise<{type?:s
  return <>
   <AdminPageHeader eyebrow="Conteúdo" title="Editorial" description="Acompanhe pautas, revisão, agendamento e publicação."/>
   <div className="adminActions" style={{marginBottom:18}}>
+   <Link className="primary" href="/admin/editorial/novo">✏️ Escrever post</Link>
    <Link className={filter(undefined)} href="/admin/editorial">Todos</Link>
    <Link className={filter('BLOG')} href="/admin/editorial?type=BLOG">Blog</Link>
    <Link className={filter('NEWS')} href="/admin/editorial?type=NEWS">Notícias</Link>
