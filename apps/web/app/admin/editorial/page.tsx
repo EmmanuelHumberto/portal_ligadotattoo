@@ -24,9 +24,10 @@ export default async function Page({searchParams}:{searchParams:Promise<{type?:s
   </div>}
   {type==='BLOG' && <AdminActionForm action={ingestSocial} className="card adminForm">
    <h2>Importar postagem de redes</h2>
-   <p className="muted">Cole a URL de uma postagem pública do LinkedIn ou Instagram. O worker coleta o conteúdo e gera um candidato para o blog.</p>
+   <p className="muted">Cole a URL da postagem e/ou o texto. Se colar o texto, a importação é imediata (não depende do scraping, que o LinkedIn/Instagram bloqueiam).</p>
    <div className="adminFields">
-    <label>URL da postagem<input name="url" required placeholder="https://www.instagram.com/p/... ou https://www.linkedin.com/..." style={{minWidth:360}}/></label>
+    <label>URL da postagem<input name="url" placeholder="https://www.instagram.com/p/... ou https://www.linkedin.com/..." style={{minWidth:360}}/></label>
+    <label>Texto da postagem (opcional)<textarea name="text" rows={6} placeholder="Cole aqui o texto da postagem para importar direto."/></label>
    </div>
    <div className="adminActions"><button className="primary" type="submit">Importar postagem</button></div>
   </AdminActionForm>}

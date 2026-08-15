@@ -183,12 +183,15 @@ export async function ingestSocial(
   _prev:ActionResult,formData:FormData,
 ):Promise<ActionResult>{
  const url=String(formData.get('url')??'').trim();
- if(!url)return {ok:false,status:422};
- const result=await adminMutate('/admin/editorial/ingest-social',{
-  method:'POST',body:{url},
+ const text=String(formData.get('text')??'').trim();
+ if(!url && !text)return {ok:false,status:422};
+ const result=await adminMutate<{mode?:string}>('/admin/editorial/ingest-social',{
+  method:'POST',body:{url,text},
  });
  if(!result.ok)return {ok:false,status:result.status};
  revalidatePath('/admin/editorial');
  revalidatePath('/admin/editorial/candidatos');
- return {ok:true,message:'Postagem enfileirada para coleta. O candidato aparece em instantes.'};
+ return {ok:true,message:text
+  ? 'Postagem importada. O rascunho será gerado automaticamente em instantes.'
+  : 'Postagem enfileirada para coleta.'};
 }
