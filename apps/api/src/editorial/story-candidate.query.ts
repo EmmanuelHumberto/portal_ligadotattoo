@@ -20,7 +20,7 @@ export class StoryCandidateQuery {
 
   async candidateSource(id:string) {
     const r=await this.pool.query(
-      `select sc.id,sc.title,sc.source_url,sc.source_snapshot_id,sc.detected_type,
+      `select sc.id,sc.title,sc.source_url,sc.source_snapshot_id,sc.detected_type,sc.verbatim,
               sc.image_media_id,e.text_content,e.structured_data
          from editorial.story_candidate sc
          left join ingestion.extraction e on e.snapshot_id=sc.source_snapshot_id

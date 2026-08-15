@@ -112,8 +112,8 @@ export class EditorialController {
       const candidateId=randomUUID();
       await this.pool.query(
         `insert into editorial.story_candidate
-         (id,source_id,source_snapshot_id,source_url,title,detected_type,status,created_at)
-         values ($1,$2,$3,$4,$5,'BLOG','NEW',now())
+         (id,source_id,source_snapshot_id,source_url,title,detected_type,verbatim,status,created_at)
+         values ($1,$2,$3,$4,$5,'BLOG',true,'NEW',now())
          on conflict (source_snapshot_id) do nothing`,
         [candidateId,sourceId,snapshotId,url,title],
       );
@@ -134,7 +134,7 @@ export class EditorialController {
        values (gen_random_uuid(),'ingestion.collect_article',1,$1::jsonb,'PENDING',now(),$2)
        on conflict (job_type,deduplication_key)
          where deduplication_key is not null do nothing`,
-      [JSON.stringify({sourceId,url,requestedType:'BLOG'}),'social-article:'+url],
+      [JSON.stringify({sourceId,url,requestedType:'BLOG',verbatim:true}),'social-article:'+url],
     );
     return {enqueued:r.rowCount ?? 0,mode:'scrape'};
   }

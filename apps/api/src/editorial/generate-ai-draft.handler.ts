@@ -21,7 +21,7 @@ export class GenerateAIDraftHandler {
 
   async execute(input:{
     candidateId?:string; sourceText?:string; sourceUrl?:string;
-    requestedType?:string; actorId:string;
+    requestedType?:string; verbatim?:boolean; actorId:string;
   }) {
     let title='';
     let sourceUrl=input.sourceUrl ?? '';
@@ -47,14 +47,21 @@ export class GenerateAIDraftHandler {
         sourceText,
         sourceUrl,
         requestedType:input.requestedType,
-        instructions:[
-          'Write the entire article in Brazilian Portuguese (pt-BR).',
-          'The source text is the full content of the post. Reproduce it faithfully: do NOT rewrite, paraphrase, expand, or add any facts, examples, mechanisms, components, or details that are not in the source.',
-          'Your only job is to structure the source: generate a title, subtitle, and summary from it, and split the source text into logical paragraphs/blocks, keeping the original wording verbatim.',
-          'Do not invent technical specifications, mechanisms, or construction details.',
-          'Preserve source attribution.',
-          'Return ONLY a JSON object with this exact schema: {"title": string, "subtitle": string|null, "summary": string, "body": {"version": 1, "blocks": [{"type": "heading"|"paragraph"|"quote"|"callout", "text": string, "level"?: number, "attribution"?: string}]}}. The body blocks must contain the source text verbatim, only split into paragraphs.',
-        ],
+        instructions: (input.verbatim ?? candidate?.verbatim)
+          ? [
+              'Write the entire article in Brazilian Portuguese (pt-BR).',
+              'The source text is the full content of the post. Reproduce it faithfully: do NOT rewrite, paraphrase, expand, or add any facts, examples, mechanisms, components, or details that are not in the source.',
+              'Your only job is to structure the source: generate a title, subtitle, and summary from it, and split the source text into logical paragraphs/blocks, keeping the original wording verbatim.',
+              'Do not invent technical specifications, mechanisms, or construction details.',
+              'Preserve source attribution.',
+              'Return ONLY a JSON object with this exact schema: {"title": string, "subtitle": string|null, "summary": string, "body": {"version": 1, "blocks": [{"type": "heading"|"paragraph"|"quote"|"callout", "text": string, "level"?: number, "attribution"?: string}]}}. The body blocks must contain the source text verbatim, only split into paragraphs.',
+            ]
+          : [
+              'Write the entire article in Brazilian Portuguese (pt-BR).',
+              'Develop a well-structured article from the source material. You may organize, explain, connect ideas, and elaborate, but do NOT invent facts, numbers, technical specifications, mechanisms, or components that are not present in the source.',
+              'Preserve source attribution.',
+              'Return ONLY a JSON object with this exact schema: {"title": string, "subtitle": string|null, "summary": string, "body": {"version": 1, "blocks": [{"type": "heading"|"paragraph"|"quote"|"callout", "text": string, "level"?: number, "attribution"?: string}]}}.',
+            ],
       },
     });
 
