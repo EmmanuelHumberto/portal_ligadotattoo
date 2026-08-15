@@ -96,6 +96,16 @@ export class GenerateAIDraftHandler {
           [input.candidateId],
         );
       }
+      if (sourceUrl) {
+        await tx.query(
+          `insert into editorial.content_source
+           (content_id,source_id,source_snapshot_id,source_url)
+           values ($1,$2,$3,$4)
+           on conflict (content_id,source_url) do nothing`,
+          [content.id, candidate?.source_id ?? null,
+           candidate?.source_snapshot_id ?? null, sourceUrl],
+        );
+      }
     });
 
     return {
