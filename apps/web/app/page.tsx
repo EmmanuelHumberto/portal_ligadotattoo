@@ -6,7 +6,7 @@ export default function Home(){
   <main className="shell">
    <section className="hero">
     <p className="eyebrow">PORTAL TATTOO</p>
-    <h1>Máquinas, tecnologia, conhecimento e cultura.</h1>
+    <h1>Tecnologia, conhecimento e arte.</h1>
     <p className="lead">Uma base editorial e técnica orientada por dados,
     proveniência e descoberta.</p>
     <div className="actions">
