@@ -6,6 +6,7 @@ import {ListingCandidateHandler} from './commerce/ingestion-listing-candidate.ha
 import {PriceTrendProjectionHandler} from './commerce/price-trend.handler';
 import {ListingStalenessHandler} from './commerce/staleness.handler';
 import {AutoDraftHandler} from './editorial/auto-draft.handler';
+import {ExtractImageHandler} from './editorial/extract-image.handler';
 import {TopicDiscoveryHandler} from './editorial/topic-discovery.handler';
 import {EditorialSearchProjectionHandler} from './editorial/editorial-search-projection.handler';
 import {ScheduledPublicationHandler} from './editorial/scheduled-publication.handler';
@@ -82,6 +83,7 @@ export function createRuntimeProcessors(
    new ExtractionHandler(pool,new SimpleContentExtractor()),
    new CollectArticleHandler(pool,new HttpAcquirer(),new SimpleContentExtractor(),s3,bucket,
     env.OBJECT_STORAGE_AUTO_CREATE_BUCKET==='true'),
+   new ExtractImageHandler(pool,new HttpAcquirer(),new SimpleContentExtractor(),s3,bucket),
    new ManufacturerMediaHandler(pool,new HttpAcquirer(),new SimpleContentExtractor(),s3,bucket),
    new CatalogDiscoveryHandler(pool,new HttpAcquirer(),new SimpleContentExtractor(),s3,bucket),
    new CatalogCollectPricesHandler(pool,new HttpAcquirer(),new SimpleContentExtractor()),

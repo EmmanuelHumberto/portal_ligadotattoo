@@ -28,6 +28,7 @@ export default async function Page({searchParams}:{searchParams:Promise<{type?:s
    <div className="adminFields">
     <label>URL da postagem<input name="url" placeholder="https://www.instagram.com/p/... ou https://www.linkedin.com/..." style={{minWidth:360}}/></label>
     <label>Texto da postagem (opcional)<textarea name="text" rows={6} placeholder="Cole aqui o texto da postagem para importar direto."/></label>
+    <label>URL da imagem (opcional)<input name="imageUrl" placeholder="https://.../imagem.jpg — se deixar vazio, tenta extrair do link"/></label>
    </div>
    <div className="adminActions"><button className="primary" type="submit">Importar postagem</button></div>
   </AdminActionForm>}
