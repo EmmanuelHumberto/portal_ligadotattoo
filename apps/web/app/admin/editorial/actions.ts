@@ -190,6 +190,10 @@ export async function ingestSocial(
   return {ok:false,status:422,
    message:'Cole também o texto da postagem — o LinkedIn e o Instagram bloqueiam a leitura automática do link.'};
  }
+ if(text && text.length<150 && /(instagram\.com|linkedin\.com)/i.test(url)){
+  return {ok:false,status:422,
+   message:'O texto colado parece muito curto (provavelmente só o título). Cole o conteúdo COMPLETO da postagem.'};
+ }
  const result=await adminMutate<{mode?:string}>('/admin/editorial/ingest-social',{
   method:'POST',body:{url,text,imageUrl},
  });
