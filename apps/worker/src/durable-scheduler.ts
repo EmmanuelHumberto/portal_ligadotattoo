@@ -26,6 +26,7 @@ export class DurableScheduler {
       count+=await this.enqueueEditorial(client);
       count+=await this.enqueueIngestion(client);
       count+=await this.enqueueAutoDraft(client);
+      count+=await this.enqueueTopicDiscovery(client);
       count+=await this.enqueueMaintenance(client);
       await this.pruneCompletedJobs(client);
       await client.query('COMMIT');
@@ -106,6 +107,18 @@ export class DurableScheduler {
                and j.payload->>'candidateId'=sc.id::text
                and j.status in ('PENDING','RUNNING','RETRY')
           )
+       on conflict (job_type,deduplication_key)
+         where deduplication_key is not null do nothing`,
+    );
+    return result.rowCount??0;
+  }
+
+  private async enqueueTopicDiscovery(client:PoolClientLike) {
+    const result=await client.query(
+      `insert into ops.job
+       (id,job_type,job_version,payload,status,available_at,deduplication_key)
+       values (gen_random_uuid(),'editorial.topic_discovery',1,'{}','PENDING',now(),
+               'topic:'||to_char(now(),'YYYY-MM-DD'))
        on conflict (job_type,deduplication_key)
          where deduplication_key is not null do nothing`,
     );

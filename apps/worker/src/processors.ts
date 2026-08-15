@@ -6,6 +6,7 @@ import {ListingCandidateHandler} from './commerce/ingestion-listing-candidate.ha
 import {PriceTrendProjectionHandler} from './commerce/price-trend.handler';
 import {ListingStalenessHandler} from './commerce/staleness.handler';
 import {AutoDraftHandler} from './editorial/auto-draft.handler';
+import {TopicDiscoveryHandler} from './editorial/topic-discovery.handler';
 import {EditorialSearchProjectionHandler} from './editorial/editorial-search-projection.handler';
 import {ScheduledPublicationHandler} from './editorial/scheduled-publication.handler';
 import {DatabaseEventRouter} from './event-router';
@@ -86,6 +87,7 @@ export function createRuntimeProcessors(
    new CatalogCollectPricesHandler(pool,new HttpAcquirer(),new SimpleContentExtractor()),
    new CatalogTranslateHandler(pool,env.DEEPSEEK_API_KEY ?? ''),
    new RetailerPriceHandler(pool,new HttpAcquirer(),new SimpleContentExtractor()),
+   new TopicDiscoveryHandler(pool,new HttpAcquirer()),
   {
    type:'ingestion.run_target',
    handle:(payload:unknown)=>ingestion.runTarget(asRecord(payload).targetId as string),

@@ -12,6 +12,7 @@ export default async function Page(){
   <AdminPageHeader eyebrow="Conteúdo" title="Editorial" description="Acompanhe pautas, revisão, agendamento e publicação."/>
   <div className="adminActions" style={{marginBottom:18}}>
    <Link className="secondary" href="/admin/editorial/candidatos">Candidatos e fluxo automático</Link>
+   <Link className="secondary" href="/admin/editorial/temas">Descoberta por tema</Link>
   </div>
   <AdminActionForm action={createEditorialDraft} className="card adminForm">
    <h2>Novo rascunho</h2>

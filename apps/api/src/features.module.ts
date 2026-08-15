@@ -30,6 +30,7 @@ import { GenerateAIDraftHandler } from './editorial/generate-ai-draft.handler';
 import { StoryCandidateQuery } from './editorial/story-candidate.query';
 import { InternalEditorialController } from './editorial/internal-editorial.controller';
 import { PipelineConfigController } from './editorial/pipeline-config.controller';
+import { EditorialTopicController } from './editorial/topic.controller';
 import { PipelineConfigRepository } from './editorial/pipeline-config.repository';
 import { EditorialWorkflowHandler } from './editorial/review-publish.handler';
 import { MeController } from './iam/me.controller';
@@ -75,6 +76,7 @@ const controllers = [
   EditorialController,
   InternalEditorialController,
   PipelineConfigController,
+  EditorialTopicController,
   IngestionController,
   CommerceController,
   MediaController,
