@@ -2,7 +2,7 @@ import Link from 'next/link';
 import {AdminCollection,AdminPageHeader} from '../../../components/admin-resource';
 import {AdminActionForm} from '../../../components/admin-action-form';
 import {adminApi} from '../../../lib/admin-api';
-import {createEditorialDraft} from './actions';
+import {createEditorialDraft,ingestSocial} from './actions';
 
 type Rows={items:Record<string,unknown>[]};
 
@@ -22,6 +22,14 @@ export default async function Page({searchParams}:{searchParams:Promise<{type?:s
   {type==='BLOG' && <div className="adminActions" style={{marginBottom:18}}>
    <Link className="primary" href="/admin/editorial/novo">✏️ Escrever post</Link>
   </div>}
+  {type==='BLOG' && <AdminActionForm action={ingestSocial} className="card adminForm">
+   <h2>Importar postagem de redes</h2>
+   <p className="muted">Cole a URL de uma postagem pública do LinkedIn ou Instagram. O worker coleta o conteúdo e gera um candidato para o blog.</p>
+   <div className="adminFields">
+    <label>URL da postagem<input name="url" required placeholder="https://www.instagram.com/p/... ou https://www.linkedin.com/..." style={{minWidth:360}}/></label>
+   </div>
+   <div className="adminActions"><button className="primary" type="submit">Importar postagem</button></div>
+  </AdminActionForm>}
   <div className="adminActions" style={{marginBottom:18}}>
    <Link className="secondary" href="/admin/editorial/candidatos">Candidatos e fluxo automático</Link>
    <Link className="secondary" href="/admin/editorial/temas">Descoberta por tema</Link>

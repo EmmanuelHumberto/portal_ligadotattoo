@@ -178,3 +178,17 @@ export async function createPost(_prev:ActionResult,formData:FormData):Promise<A
  if(!result.ok)return {ok:false,status:result.status};
  redirect(`/admin/editorial/${result.data.id}`);
 }
+
+export async function ingestSocial(
+  _prev:ActionResult,formData:FormData,
+):Promise<ActionResult>{
+ const url=String(formData.get('url')??'').trim();
+ if(!url)return {ok:false,status:422};
+ const result=await adminMutate('/admin/editorial/ingest-social',{
+  method:'POST',body:{url},
+ });
+ if(!result.ok)return {ok:false,status:result.status};
+ revalidatePath('/admin/editorial');
+ revalidatePath('/admin/editorial/candidatos');
+ return {ok:true,message:'Postagem enfileirada para coleta. O candidato aparece em instantes.'};
+}
