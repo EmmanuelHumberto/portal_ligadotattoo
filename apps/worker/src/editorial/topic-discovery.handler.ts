@@ -27,10 +27,10 @@ export class TopicDiscoveryHandler implements JobHandler {
   }
 
   private async discoverOne(topic:Topic):Promise<number>{
-    const q=`https://news.google.com/rss/search?q=${encodeURIComponent(topic.query)}&hl=${topic.language}&gl=BR&ceid=BR:pt-419`;
+    const q=`https://www.bing.com/news/search?q=${encodeURIComponent(topic.query)}&format=rss&mkt=${topic.language}`;
     const r=await this.http.acquire({url:q,allowedHosts:[],maxBytes:2_000_000});
     const items=parseRss(r.body.toString('utf8')).slice(0,topic.max_articles);
-    console.log('topic_discovery_items',{topic:topic.name,url:q,items:items.length});
+    console.log('topic_discovery_items',{topic:topic.name,items:items.length});
     if(!items.length)return 0;
 
     const sourceId=await this.ensureSource(topic);
@@ -43,7 +43,7 @@ export class TopicDiscoveryHandler implements JobHandler {
                  'PENDING',now(),$2)
          on conflict (job_type,deduplication_key)
            where deduplication_key is not null do nothing`,
-        [JSON.stringify({sourceId,url:it.link}),'topic-article:'+it.link],
+        [JSON.stringify({sourceId,url:it.link,title:it.title}),'topic-article:'+it.link],
       );
       n += res.rowCount ?? 0;
     }
@@ -64,7 +64,7 @@ export class TopicDiscoveryHandler implements JobHandler {
     await this.pool.query(
       `insert into ingestion.source
        (id,name,kind,base_url,allowed_hosts,status)
-       values ($1,$2,'TOPIC','https://news.google.com/','{}','ACTIVE')`,
+       values ($1,$2,'TOPIC','https://www.bing.com/','{}','ACTIVE')`,
       [id,topic.name],
     );
     return id;
@@ -76,10 +76,21 @@ function parseRss(xml:string):Array<{title:string;link:string}>{
   for(const m of xml.matchAll(/<item>([\s\S]*?)<\/item>/g)){
     const block=m[1] ?? '';
     const title=decode(/<title>([\s\S]*?)<\/title>/i.exec(block)?.[1]);
-    const link=decode(/<link>([\s\S]*?)<\/link>/i.exec(block)?.[1]);
+    const rawLink=decode(/<link>([\s\S]*?)<\/link>/i.exec(block)?.[1]);
+    const link=extractRealUrl(rawLink);
     if(title&&link)out.push({title,link});
   }
   return out;
+}
+
+function extractRealUrl(link:string):string{
+  if(!link)return '';
+  try{
+    const u=new URL(link);
+    const real=u.searchParams.get('url');
+    if(real)return real;
+  }catch{}
+  return link;
 }
 
 function decode(v:string|undefined):string{

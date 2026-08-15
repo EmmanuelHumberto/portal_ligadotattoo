@@ -86,7 +86,7 @@ export class CollectArticleHandler implements JobHandler {
          values ($1,$2,$3,$4,$5,'NEW',now())
          on conflict (source_snapshot_id) do nothing`,
         [candidateId,sourceId,snapshotId,result.finalUrl,
-         extracted.title ?? result.finalUrl],
+         (extracted.title ?? String(p?.title ?? '').trim()) || result.finalUrl],
       );
 
       const structured=(extracted.structured ?? {}) as Record<string,unknown>;
