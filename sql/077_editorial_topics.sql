@@ -13,14 +13,4 @@ create table if not exists editorial.topic (
   constraint ck_topic_status check (status in ('ACTIVE','PAUSED'))
 );
 
-insert into editorial.topic (name, query, language)
-select v.name, v.query, v.language
-from (values
-  ('Cuidados pós-tatuagem', 'tattoo aftercare', 'pt-BR'),
-  ('Máquinas de tatuagem', 'tattoo machine', 'pt-BR'),
-  ('Tintas para tatuagem', 'tattoo ink', 'pt-BR'),
-  ('Higiene e biossegurança', 'tattoo studio hygiene', 'pt-BR')
-) as v(name, query, language)
-where not exists (select 1 from editorial.topic t where t.name = v.name);
-
 commit;
