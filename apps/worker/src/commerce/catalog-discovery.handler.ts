@@ -404,9 +404,18 @@ export class CatalogDiscoveryHandler implements JobHandler {
     try {
       // Muitos sites expõem og:image como http:// mesmo suportando https.
       const secureUrl=url.startsWith('http://') ? 'https://'+url.slice(7) : url;
-      const img=await this.http.acquire({
-        url:secureUrl,allowedHosts:[],maxBytes:8_000_000,timeoutMs:20_000,
-      });
+      let img:any;
+      try {
+        img=await this.http.acquire({
+          url:secureUrl,allowedHosts:[],maxBytes:8_000_000,timeoutMs:20_000,
+        });
+      } catch {
+        // Retry após pausa (CDNs como vteximg aplicam rate limit / 429).
+        await new Promise(r=>setTimeout(r,1200));
+        img=await this.http.acquire({
+          url:secureUrl,allowedHosts:[],maxBytes:8_000_000,timeoutMs:20_000,
+        });
+      }
       const mime=img.contentType ?? 'image/jpeg';
       if(!mime.startsWith('image/'))return null;
       const ext=IMAGE_EXT[mime] ?? 'jpg';
