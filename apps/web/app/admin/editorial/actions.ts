@@ -190,15 +190,13 @@ export async function ingestSocial(
   return {ok:false,status:422,
    message:'Cole também o texto da postagem — o LinkedIn e o Instagram bloqueiam a leitura automática do link.'};
  }
- const result=await adminMutate<{mode?:string;duplicate?:boolean}>('/admin/editorial/ingest-social',{
+ const result=await adminMutate<{mode?:string}>('/admin/editorial/ingest-social',{
   method:'POST',body:{url,text,imageUrl},
  });
  if(!result.ok)return {ok:false,status:result.status};
  revalidatePath('/admin/editorial');
  revalidatePath('/admin/editorial/candidatos');
- return {ok:true,message: result.data?.duplicate
-  ? 'Essa postagem já foi importada anteriormente.'
-  : text
-    ? 'Postagem importada. O rascunho será gerado automaticamente em instantes.'
-    : 'Postagem enfileirada para coleta.'};
+ return {ok:true,message:text
+  ? 'Postagem importada. O rascunho será gerado automaticamente em instantes.'
+  : 'Postagem enfileirada para coleta.'};
 }

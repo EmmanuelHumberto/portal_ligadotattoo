@@ -95,40 +95,27 @@ export class EditorialController {
     // Fallback manual: se o texto foi colado, cria o candidato direto (sem depender de scraping).
     if(text){
       const title=(text.split(/\n/)[0] ?? '').slice(0,140) || url || 'Postagem de rede social';
-      const sha=createHash('sha256').update(text).digest('hex');
-
-      // Dedup: se o mesmo texto já foi importado, retorna o candidato existente.
-      const dup=await this.pool.query(
-        `select sc.id as candidate_id
-           from editorial.story_candidate sc
-           join ingestion.snapshot sn on sn.id=sc.source_snapshot_id
-          where sn.source_id=$1 and sn.sha256=$2
-          limit 1`,
-        [sourceId,sha],
-      );
-      if(dup.rowCount){
-        return {enqueued:0,candidateId:dup.rows[0].candidate_id,mode:'manual',duplicate:true};
-      }
-
+      const fingerprint=createHash('sha256').update(text).digest('hex');
       const snapshotId=randomUUID();
+      // Hash único por importação (com salt) para nunca conflitar com snapshots anteriores.
+      const snapshotSha=createHash('sha256').update(text+':'+snapshotId).digest('hex');
       await this.pool.query(
         `insert into ingestion.snapshot
          (id,source_id,url,content_type,http_status,sha256,body_bytes,observed_at)
          values ($1,$2,$3,'text/plain',200,$4,$5,now())`,
-        [snapshotId,sourceId,url,sha,Buffer.from(text)],
+        [snapshotId,sourceId,url,snapshotSha,Buffer.from(text)],
       );
       await this.pool.query(
         `insert into ingestion.extraction
          (id,snapshot_id,title,text_content,structured_data,fingerprint,created_at)
          values (gen_random_uuid(),$1,$2,$3,'{}'::jsonb,$4,now())`,
-        [snapshotId,title,text,sha],
+        [snapshotId,title,text,fingerprint],
       );
       const candidateId=randomUUID();
       await this.pool.query(
         `insert into editorial.story_candidate
          (id,source_id,source_snapshot_id,source_url,title,detected_type,verbatim,status,created_at)
-         values ($1,$2,$3,$4,$5,'BLOG',true,'NEW',now())
-         on conflict (source_snapshot_id) do nothing`,
+         values ($1,$2,$3,$4,$5,'BLOG',true,'NEW',now())`,
         [candidateId,sourceId,snapshotId,url,title],
       );
       await this.pool.query(
