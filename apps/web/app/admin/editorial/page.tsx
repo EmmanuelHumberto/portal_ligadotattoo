@@ -24,11 +24,11 @@ export default async function Page({searchParams}:{searchParams:Promise<{type?:s
   </div>}
   {type==='BLOG' && <AdminActionForm action={ingestSocial} className="card adminForm">
    <h2>Importar postagem de redes</h2>
-   <p className="muted">Cole a URL e o <strong>texto completo</strong> da postagem. LinkedIn e Instagram bloqueiam a leitura automática do texto — por isso o texto é obrigatório para essas redes. A imagem é extraída automaticamente quando possível.</p>
+   <p className="muted">O essencial é o <strong>texto</strong> (e a imagem). O link é opcional — serve só para atribuir a fonte e tentar extrair a imagem automaticamente.</p>
    <div className="adminFields">
-    <label>URL da postagem<input name="url" placeholder="https://www.instagram.com/p/... ou https://www.linkedin.com/..." style={{minWidth:360}}/></label>
-    <label>Texto da postagem (obrigatório para LinkedIn/Instagram)<textarea name="text" rows={8} placeholder="Cole aqui o texto completo da postagem."/></label>
+    <label>Texto da postagem<textarea name="text" rows={10} placeholder="Cole aqui o texto completo da postagem."/></label>
     <label>URL da imagem (opcional)<input name="imageUrl" placeholder="https://.../imagem.jpg — se deixar vazio, tenta extrair do link"/></label>
+    <label>Link da postagem (opcional — para atribuição da fonte)<input name="url" placeholder="https://www.linkedin.com/... ou https://www.instagram.com/..." style={{minWidth:360}}/></label>
    </div>
    <div className="adminActions"><button className="primary" type="submit">Importar postagem</button></div>
   </AdminActionForm>}
