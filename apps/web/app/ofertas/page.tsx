@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import {SiteHeader} from '../../components/site-header';
+import {OfferCompareButton} from '../../components/offer-compare';
 import {api} from '../../lib/api';
 import {pageMetadata} from '../../lib/seo';
 
@@ -30,6 +31,7 @@ export default async function Offers({searchParams}:{
    <small className="muted">Atualizado em {date(offer.observedAt)}</small>
    <div className="offerActions"><Link className="btn secondary"
     href={`/maquinas/${offer.product.slug}`}>Detalhes</Link>
+    <OfferCompareButton item={{listingId:offer.listingId,label:`${offer.product.name} · ${offer.seller}`,seller:offer.seller}}/>
     <a className="btn primary" href={offer.outboundUrl} rel="nofollow sponsored">
      Ir para a loja</a></div>
   </article>)}</section>

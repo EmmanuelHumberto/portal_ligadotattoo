@@ -46,6 +46,12 @@ export class CommerceController {
     return r.rows[0];
   }
 
+  @Get('public/offers/compare')
+  @Public()
+  compareOffers(@Query('ids') ids='') {
+    return this.query.compareOffers(ids.split(',').filter(Boolean).slice(0,4));
+  }
+
   @Get('public/offers')
   @Public()
   offerFeed(@Query('limit') limit='24',@Query('cursor') cursor?:string) {

@@ -103,6 +103,39 @@ export class CommerceQuery {
       meta:{hasMore,nextCursor:hasMore?rows.at(-1)?.listing_id??null:null},
     };
   }
+
+  async compareOffers(ids:string[]) {
+    if(!ids.length)return {items:[]};
+    const r=await this.pool.query(
+      `select li.id listing_id,p.id product_id,p.slug product_slug,
+              p.name product_name,p.product_type_key,
+              m.name manufacturer_name,m.slug manufacturer_slug,
+              s.name seller,po.amount,po.currency,po.availability,po.observed_at
+         from commerce.listing li
+         join catalog.product_model p on p.id=li.product_model_id
+         join catalog.manufacturer m on m.id=p.manufacturer_id
+         join commerce.seller s on s.id=li.seller_id
+         join lateral (
+           select amount,currency,availability,observed_at
+             from commerce.price_observation x
+            where x.listing_id=li.id order by observed_at desc limit 1
+         ) po on true
+        where li.id=any($1::uuid[])
+        order by array_position($1::uuid[],li.id)`,
+      [ids],
+    );
+    return {items:r.rows.map(x=>({
+      listingId:x.listing_id,
+      product:{
+        id:x.product_id,slug:x.product_slug,name:x.product_name,
+        type:x.product_type_key,
+        manufacturer:{name:x.manufacturer_name,slug:x.manufacturer_slug},
+      },
+      seller:x.seller,amount:Number(x.amount),currency:x.currency,
+      availability:x.availability,observedAt:x.observed_at,
+      outboundUrl:`/go/listing/${x.listing_id}`,
+    }))};
+  }
 }
 
 function domainOf(url:string|null|undefined):string|null {
