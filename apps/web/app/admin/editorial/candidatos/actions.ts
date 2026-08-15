@@ -29,3 +29,16 @@ export async function runAutoDraft(
   ? `${n} rascunho(s) enfileirado(s) para geração.`
   : 'Nenhum candidato pendente no momento. A ingestão cria candidatos ao coletar as fontes.'};
 }
+
+export async function ingestSocial(
+  _prev:ActionResult,formData:FormData,
+):Promise<ActionResult>{
+ const url=String(formData.get('url')??'').trim();
+ if(!url)return {ok:false,status:422};
+ const result=await adminMutate('/admin/editorial/ingest-social',{
+  method:'POST',body:{url},
+ });
+ if(!result.ok)return {ok:false,status:result.status};
+ revalidatePath('/admin/editorial/candidatos');
+ return {ok:true,message:'Postagem enfileirada para coleta. O candidato aparece aqui em instantes.'};
+}

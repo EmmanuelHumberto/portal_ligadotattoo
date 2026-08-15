@@ -6,6 +6,7 @@ import {
   approveDraft,approveEditorial,publishEditorial,
   removeEditorial,scheduleEditorial,submitEditorial,unpublishEditorial,
 } from '../actions';
+import {updateEditorial} from './actions';
 
 type Detail={
  id:string;contentType:string;slug:string;title:string;
@@ -28,6 +29,7 @@ export default async function Page({params}:{params:Promise<{id:string}>}){
   <AdminPageHeader eyebrow="Conteúdo" title={content.title}
    description={`${content.contentType} · ${content.status} · versão ${content.version}`}/>
   <Workflow content={content}/>
+  {content.status==='DRAFT'&&<EditorForm content={content}/>}
   <div className="card panel">
    <h2>Conteúdo</h2>
    {content.subtitle&&<p className="muted">{content.subtitle}</p>}
@@ -114,6 +116,23 @@ function Workflow({content}:{content:Detail}){
     <p className="muted">Nenhuma ação disponível para o status {content.status}.</p>}
   </div>
  </div>;
+}
+
+function EditorForm({content}:{content:Detail}){
+ return <AdminActionForm action={updateEditorial} className="card panel">
+  <h2>Editar rascunho</h2>
+  <p className="muted">Edite o texto e o corpo (blocos em JSON). Imagens usam <code>{'{"type":"image","mediaId":"<uuid>"}'}</code>.</p>
+  <input type="hidden" name="id" value={content.id}/>
+  <div className="adminFields">
+   <label>Título<input name="title" defaultValue={content.title}/></label>
+   <label>Subtítulo<input name="subtitle" defaultValue={content.subtitle??''}/></label>
+   <label>Resumo<textarea name="summary" rows={2} defaultValue={content.summary??''}/></label>
+   <label>Corpo (blocos JSON)<textarea name="body" rows={16} className="mono" defaultValue={JSON.stringify(content.body ?? {version:1,blocks:[]}, null, 2)}/></label>
+  </div>
+  <div className="adminActions">
+   <button className="primary" type="submit">Salvar rascunho</button>
+  </div>
+ </AdminActionForm>;
 }
 
 function renderBody(body:Detail['body'],mediaUrls:Record<string,string>={}){

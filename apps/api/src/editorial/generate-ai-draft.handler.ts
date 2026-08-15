@@ -57,7 +57,7 @@ export class GenerateAIDraftHandler {
       },
     });
 
-    const draft=normalizeDraft(result.output, title || sourceUrl, input.requestedType);
+    const draft=normalizeDraft(result.output, title || sourceUrl, input.requestedType ?? candidate?.detected_type);
     if (candidate?.image_media_id) {
       draft.body.blocks=[
         {type:'image' as const, mediaId:String(candidate.image_media_id)},

@@ -2,7 +2,7 @@ import {AdminAccessState,AdminPageHeader} from '../../../../components/admin-res
 import {AdminActionForm} from '../../../../components/admin-action-form';
 import {adminApi} from '../../../../lib/admin-api';
 import {generateAIDraft} from '../actions';
-import {runAutoDraft,setAutoDraft} from './actions';
+import {ingestSocial,runAutoDraft,setAutoDraft} from './actions';
 
 type Row={id:string;title?:string;status?:string;source_url?:string;created_at?:string};
 type Rows={items:Row[]};
@@ -23,6 +23,14 @@ export default async function Page(){
   <AdminPageHeader eyebrow="Conteúdo" title="Candidatos de história"
    description="Material descoberto pela ingestão. Gere um rascunho com IA para revisão e aprovação humana."/>
   <AutoDraftToggle enabled={enabled}/>
+  <AdminActionForm action={ingestSocial} className="card adminForm">
+   <h2>Importar postagem (LinkedIn / Instagram)</h2>
+   <p className="muted">Cole a URL de uma postagem pública. O worker coleta o conteúdo e gera um candidato para o blog.</p>
+   <div className="adminFields">
+    <label>URL da postagem<input name="url" required placeholder="https://www.instagram.com/p/... ou https://www.linkedin.com/..." style={{minWidth:360}}/></label>
+   </div>
+   <div className="adminActions"><button className="primary" type="submit">Importar postagem</button></div>
+  </AdminActionForm>
   {items.length===0
    ? <div className="card adminEmpty">Nenhum candidato. A ingestão cria candidatos ao coletar fontes de notícias.</div>
    : <div className="card adminTableWrap"><table className="adminTable">

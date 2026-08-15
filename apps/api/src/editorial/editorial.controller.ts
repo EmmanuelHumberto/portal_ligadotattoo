@@ -1,9 +1,12 @@
 import {
-  Body,Controller,Delete,Get,NotFoundException,Param,Post,Query,
+  BadRequestException,Body,Controller,Delete,Get,Inject,NotFoundException,Patch,Param,Post,Query,
 } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
+import { Pool } from 'pg';
 import { Actor } from '../iam/actor.decorator';
 import { Public } from '../iam/public.decorator';
 import { RequireCapability } from '../iam/require-capability.decorator';
+import { PG_POOL } from '../platform/database.module';
 import { CreateEditorialHandler } from './create-editorial.handler';
 import { EditorialWorkflowHandler } from './review-publish.handler';
 import { EditorialQuery } from './editorial.query';
@@ -18,6 +21,7 @@ export class EditorialController {
     private readonly query:EditorialQuery,
     private readonly aiDraft:GenerateAIDraftHandler,
     private readonly candidates:StoryCandidateQuery,
+    @Inject(PG_POOL) private readonly pool:Pool,
   ) {}
 
   @Get('public/editorial')
@@ -58,6 +62,58 @@ export class EditorialController {
   @RequireCapability('editorial.write')
   create(@Body() body:any,@Actor() actor:any) {
     return this.createHandler.execute(body,actor.actorId);
+  }
+
+  @Patch('admin/editorial/:id')
+  @RequireCapability('editorial.write')
+  async update(@Param('id') id:string,@Body() body:any) {
+    const title=String(body?.title ?? '').trim();
+    if(!title)throw new BadRequestException('Título é obrigatório');
+    const r=await this.pool.query(
+      `update editorial.content
+          set title=$2, subtitle=$3, summary=$4, body_document=$5::jsonb,
+              version=version+1, updated_at=now()
+        where id=$1 and status='DRAFT'
+        returning id,title,subtitle,summary,version`,
+      [id, title,
+       body.subtitle ?? null,
+       body.summary ?? null,
+       JSON.stringify(body.body ?? {version:1,blocks:[]})],
+    );
+    if(!r.rowCount)throw new BadRequestException('Somente rascunhos podem ser editados');
+    return r.rows[0];
+  }
+
+  @Post('admin/editorial/ingest-social')
+  @RequireCapability('editorial.write')
+  async ingestSocial(@Body() body:any) {
+    const url=String(body?.url ?? '').trim();
+    if(!url)throw new BadRequestException('URL da postagem é obrigatória');
+    const sourceId=await this.socialSourceId();
+    const r=await this.pool.query(
+      `insert into ops.job
+       (id,job_type,job_version,payload,status,available_at,deduplication_key)
+       values (gen_random_uuid(),'ingestion.collect_article',1,$1::jsonb,'PENDING',now(),$2)
+       on conflict (job_type,deduplication_key)
+         where deduplication_key is not null do nothing`,
+      [JSON.stringify({sourceId,url,requestedType:'BLOG'}),'social-article:'+url],
+    );
+    return {enqueued:r.rowCount ?? 0};
+  }
+
+  private async socialSourceId():Promise<string>{
+    const existing=await this.pool.query(
+      `select id from ingestion.source where kind='SOCIAL' limit 1`,
+    );
+    if(existing.rowCount)return existing.rows[0].id;
+    const id=randomUUID();
+    await this.pool.query(
+      `insert into ingestion.source
+       (id,name,kind,base_url,allowed_hosts,status)
+       values ($1,'Redes sociais','SOCIAL','https://www.instagram.com/','{}','ACTIVE')`,
+      [id],
+    );
+    return id;
   }
 
   @Post('admin/editorial/:id/submit')

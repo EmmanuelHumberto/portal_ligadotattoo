@@ -82,11 +82,12 @@ export class CollectArticleHandler implements JobHandler {
       const candidateId=randomUUID();
       await this.pool.query(
         `insert into editorial.story_candidate
-         (id,source_id,source_snapshot_id,source_url,title,status,created_at)
-         values ($1,$2,$3,$4,$5,'NEW',now())
+         (id,source_id,source_snapshot_id,source_url,title,detected_type,status,created_at)
+         values ($1,$2,$3,$4,$5,$6,'NEW',now())
          on conflict (source_snapshot_id) do nothing`,
         [candidateId,sourceId,snapshotId,result.finalUrl,
-         (extracted.title ?? String(p?.title ?? '').trim()) || result.finalUrl],
+         (extracted.title ?? String(p?.title ?? '').trim()) || result.finalUrl,
+         String(p?.requestedType ?? '').toUpperCase() || null],
       );
 
       const structured=(extracted.structured ?? {}) as Record<string,unknown>;
