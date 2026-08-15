@@ -14,6 +14,6 @@ export function AdminActionForm({action,className,children,encType}:{
  return <form action={formAction} className={className} encType={encType}>
   {children}
   {state.ok && state.message ? <p className="formSuccess" role="status">{state.message}</p> : null}
-  {!state.ok && <p className="formError" role="alert">{actionErrorMessage(state.status)}</p>}
+  {!state.ok && <p className="formError" role="alert">{state.message ?? actionErrorMessage(state.status)}</p>}
  </form>;
 }

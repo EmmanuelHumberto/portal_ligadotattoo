@@ -185,6 +185,10 @@ export async function ingestSocial(
  const url=String(formData.get('url')??'').trim();
  const text=String(formData.get('text')??'').trim();
  if(!url && !text)return {ok:false,status:422};
+ if(!text && /(instagram\.com|linkedin\.com)/i.test(url)){
+  return {ok:false,status:422,
+   message:'Cole também o texto da postagem — o LinkedIn e o Instagram bloqueiam a leitura automática do link.'};
+ }
  const result=await adminMutate<{mode?:string}>('/admin/editorial/ingest-social',{
   method:'POST',body:{url,text},
  });
