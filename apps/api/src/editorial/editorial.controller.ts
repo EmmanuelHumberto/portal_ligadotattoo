@@ -96,6 +96,20 @@ export class EditorialController {
     if(text){
       const title=(text.split(/\n/)[0] ?? '').slice(0,140) || url || 'Postagem de rede social';
       const sha=createHash('sha256').update(text).digest('hex');
+
+      // Dedup: se o mesmo texto já foi importado, retorna o candidato existente.
+      const dup=await this.pool.query(
+        `select sc.id as candidate_id
+           from editorial.story_candidate sc
+           join ingestion.snapshot sn on sn.id=sc.source_snapshot_id
+          where sn.source_id=$1 and sn.sha256=$2
+          limit 1`,
+        [sourceId,sha],
+      );
+      if(dup.rowCount){
+        return {enqueued:0,candidateId:dup.rows[0].candidate_id,mode:'manual',duplicate:true};
+      }
+
       const snapshotId=randomUUID();
       await this.pool.query(
         `insert into ingestion.snapshot
