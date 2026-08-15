@@ -24,9 +24,14 @@ async function main(){
  });
  try {
   while(!abort.signal.aborted){
-   await heartbeat.tickStarted();
-   const result=await registry.tick({signal:abort.signal});
-   await heartbeat.tickCompleted(result.failures);
+   try {
+    await heartbeat.tickStarted();
+    const result=await registry.tick({signal:abort.signal});
+    await heartbeat.tickCompleted(result.failures);
+   } catch (error) {
+    // Erro transitório de um tick não deve derrubar o worker.
+    console.error('worker_tick_error',{code:errorCode(error)});
+   }
    await sleep(intervalMs,undefined,{signal:abort.signal}).catch(()=>undefined);
   }
  } finally {
