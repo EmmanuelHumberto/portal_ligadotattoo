@@ -202,19 +202,49 @@ export class PublicProductQuery {
     };
   }
 
-  async facets() {
+  async facets(input:{productType?:string;manufacturer?:string}={}) {
+    const typeFilter = input.productType
+      ? input.productType.split(',').filter(Boolean)
+      : [];
+    const manufFilter = (input.manufacturer ?? '').trim();
+
+    const typeParams:unknown[] = [];
+    const typeWhere:string[] = [`lifecycle <> 'UNKNOWN'`];
+    if (typeFilter.length) {
+      typeParams.push(typeFilter);
+      typeWhere.push(`product_type_key = ANY($${typeParams.length})`);
+    }
+    if (manufFilter) {
+      typeParams.push(manufFilter);
+      typeWhere.push(`manufacturer_id in (select id from catalog.manufacturer where slug=$${typeParams.length})`);
+    }
+
+    const brandParams:unknown[] = [];
+    const brandWhere:string[] = [`p.lifecycle <> 'UNKNOWN'`];
+    if (typeFilter.length) {
+      brandParams.push(typeFilter);
+      brandWhere.push(`p.product_type_key = ANY($${brandParams.length})`);
+    }
+    if (manufFilter) {
+      brandParams.push(manufFilter);
+      brandWhere.push(`m.slug = $${brandParams.length}`);
+    }
+
     const [brands, types] = await Promise.all([
       this.pool.query(
         `select m.slug value,m.name label,count(p.id)::int count
            from catalog.manufacturer m
            join catalog.product_model p on p.manufacturer_id=m.id
-          where p.lifecycle <> 'UNKNOWN'
+          where ${brandWhere.join(' and ')}
           group by m.slug,m.name order by m.name`,
+        brandParams,
       ),
       this.pool.query(
         `select product_type_key value,product_type_key label,count(*)::int count
-           from catalog.product_model where lifecycle <> 'UNKNOWN'
+           from catalog.product_model
+          where ${typeWhere.join(' and ')}
           group by product_type_key order by product_type_key`,
+        typeParams,
       ),
     ]);
     return {

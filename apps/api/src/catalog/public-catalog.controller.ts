@@ -22,8 +22,11 @@ export class PublicCatalogController {
   }
 
   @Get('facets')
-  facets() {
-    return this.products.facets();
+  facets(
+    @Query('productType') productType?: string,
+    @Query('manufacturer') manufacturer?: string,
+  ) {
+    return this.products.facets({ productType, manufacturer });
   }
 
   @Get('compare')
