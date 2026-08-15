@@ -25,7 +25,7 @@ export class SimpleContentExtractor implements ContentExtractor {
     const images=[...raw.matchAll(/<img[^>]+src=["']([^"']+)["']/gi)]
       .map(m=>decodeEntities(m[1] ?? ''))
       .filter(h=>h && !/^(#|data:|javascript:)/i.test(h))
-      .filter(u=>!/(favicon|\.svg|\.gif|logo|brand|icon|tracking|pixel|ct\.pinterest|facebook\.com\/tr|google|profile|avatar)/i.test(u))
+      .filter(u=>!/(favicon|\.svg|\.gif|logo|brand|icon|tracking|pixel|ct\.pinterest|facebook\.com\/tr|google|profile|avatar|ie6countdown|warning|banner)/i.test(u))
       .map(u=>{try{return new URL(u,input.url).toString();}catch{return u;}});
     const price=extractPrice(raw);
     return {title,text,links,structured:{

@@ -41,8 +41,9 @@ export class ExtractImageHandler implements JobHandler {
       }
       if(!imageUrl)return 'DONE';
 
+      const secureUrl=imageUrl.startsWith('http://') ? 'https://'+imageUrl.slice(7) : imageUrl;
       const img=await this.http.acquire({
-        url:imageUrl,allowedHosts:[],maxBytes:8_000_000,timeoutMs:20_000,
+        url:secureUrl,allowedHosts:[],maxBytes:8_000_000,timeoutMs:20_000,
       });
       const mime=img.contentType ?? 'image/jpeg';
       if(!mime.startsWith('image/'))return 'DONE';

@@ -271,8 +271,10 @@ export class CatalogDiscoveryHandler implements JobHandler {
     const name=cleanProductName(extracted.title ?? '');
     if(!name || isNoise(name))return false;
     const structured=(extracted.structured ?? {}) as Record<string,unknown>;
-    const image=(structured.ogImage
-      ?? (Array.isArray(structured.images)?structured.images[0]:undefined)) as string|undefined;
+    const imageCandidates:string[]=[
+      structured.ogImage,
+      ...(Array.isArray(structured.images)?structured.images:[]),
+    ].filter((x):x is string=>typeof x==='string' && !!x).slice(0,3);
     const slug=slugify(name);
     const category=classifyProductType(name);
 
@@ -315,19 +317,22 @@ export class CatalogDiscoveryHandler implements JobHandler {
       `select 1 from media.media_link
         where subject_type='PRODUCT_MODEL' and subject_id=$1 limit 1`,[productId],
     );
-    if(!hasImg.rowCount && image){
-      const mediaId=await this.downloadImage(image,String(m.name));
-      if(mediaId){
-        await this.pool.query(
-          `insert into media.media_link
-           (id,media_asset_id,subject_type,subject_id,role,is_primary,sort_order)
-           select gen_random_uuid(),$1,'PRODUCT_MODEL',$2,'hero',true,0
-            where not exists (
-              select 1 from media.media_link
-               where subject_type='PRODUCT_MODEL' and subject_id=$2
-            )`,
-          [mediaId,productId],
-        );
+    if(!hasImg.rowCount){
+      for(const image of imageCandidates){
+        const mediaId=await this.downloadImage(image,String(m.name));
+        if(mediaId){
+          await this.pool.query(
+            `insert into media.media_link
+             (id,media_asset_id,subject_type,subject_id,role,is_primary,sort_order)
+             select gen_random_uuid(),$1,'PRODUCT_MODEL',$2,'hero',true,0
+              where not exists (
+                select 1 from media.media_link
+                 where subject_type='PRODUCT_MODEL' and subject_id=$2
+              )`,
+            [mediaId,productId],
+          );
+          break;
+        }
       }
     }
     try { await this.recordContent(productId,html,url,category); } catch {}
@@ -397,8 +402,10 @@ export class CatalogDiscoveryHandler implements JobHandler {
 
   private async downloadImage(url:string,attribution:string):Promise<string|null>{
     try {
+      // Muitos sites expõem og:image como http:// mesmo suportando https.
+      const secureUrl=url.startsWith('http://') ? 'https://'+url.slice(7) : url;
       const img=await this.http.acquire({
-        url,allowedHosts:[],maxBytes:8_000_000,timeoutMs:20_000,
+        url:secureUrl,allowedHosts:[],maxBytes:8_000_000,timeoutMs:20_000,
       });
       const mime=img.contentType ?? 'image/jpeg';
       if(!mime.startsWith('image/'))return null;
@@ -464,6 +471,7 @@ function isNoise(name:string):boolean{
   const n=name.toLowerCase();
   if(n.includes('▾'))return true;
   if(/para tatuar|comodidad|robustos|ergonômicos|fácil de limpar/i.test(n))return true;
+  if(/^(coil machine|rotary & coil machine|rotary machine|wireless machine|power supplies?|traditional power supply|aftercare|tattoo ink mixer|tattoo ink cup|accessories?|cartridges?|needles?|grips?|inks?|machines?|supplies?)$/i.test(n))return true;
   return /comparison|tattoo machines|rotary machines|stencil printer|wireless thermal/i.test(n);
 }
 
@@ -479,16 +487,22 @@ function classifyProductType(name:string,productType?:string,tags?:string[]):str
   if(/machine|tattoo pen|wireless pen|power pen|pen gun|tattoo gun|tattoo kit|\bpmu\b|wand|shader|packer|liner|\bpen\b/i.test(n)
      && !/grip|torsion|tube|needle|plier|pencil/i.test(n)) return 'PEN';
   if(/\bink\b|tinta|pigment|colour|color|greywash|graywash/i.test(n)
-     && !/cup|cap|grip|cartridge|needle|cable|rca/i.test(n)) return 'INK';
+      && !/cup|cap|grip|cartridge|needle|cable|rca/i.test(n)) return 'INK';
+  // Marcas/modelos de máquina reconhecidos mesmo sem "machine"/"pen"/"rotary" no nome.
+  if(/linetion|sworder|flux|spektra|xion|hawk|bishop|cheyenne|critical|ambition|axys|vlad|equaliser|stigma|musotoku|kwadron/i.test(n)
+      && !/cartridge|cartucho|needle|agulha|grip|ink|tinta|battery|power|fonte|cable|rca|cup|bandagem|anel|boné/i.test(n)) return 'PEN';
   return 'ACCESSORY';
 }
 
 export function cleanProductName(rawTitle:string):string|null{
   const raw=rawTitle.replace(/\s+/g,' ').trim();
   if(!raw)return null;
-  // nome antes do separador "|" ou "–"
-  const first=raw.split(/\s[|–—]\s/)[0];
-  const name=(first ?? raw).trim();
+  // nome antes do separador "|", "–", "—" ou ":"
+  let first=raw.split(/\s[|–—:]\s/)[0];
+  first=(first ?? raw).trim();
+  // remove sufixo de preço: " - $385.00" / " - R$ 280,00"
+  first=first.replace(/\s*[-–—]\s*(R?\$\s?)?\d[\d.,]*\s*$/,'').trim();
+  const name=first;
   if(name.length<3 || name.length>80)return null;
   return name;
 }
