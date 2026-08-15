@@ -6,7 +6,7 @@ export default async function CompareOffers({searchParams}:{searchParams:Promise
  const clean=String(ids).split(',').filter(Boolean).slice(0,4);
  const data=clean.length?await api(`/public/offers/compare?ids=${clean.join(',')}`):{items:[]};
  const items=data.items??[];
- const amounts=items.map((o:any)=>Number(o.amount)).filter((x:number)=>Number.isFinite(x));
+ const amounts=items.map((o:any)=>Number(o.amountUsd ?? o.amount)).filter((x:number)=>Number.isFinite(x));
  const minAmount=amounts.length?Math.min(...amounts):null;
  return <><SiteHeader/><main className="shell comparePage">
   <p className="accent">COMPARADOR DE PREÇOS</p><h1>Compare ofertas lado a lado</h1>
@@ -15,7 +15,7 @@ export default async function CompareOffers({searchParams}:{searchParams:Promise
    <table>
     <thead><tr><th>Oferta</th>{items.map((o:any)=><th key={o.listingId}>{o.product.name}<small>{o.seller}</small></th>)}</tr></thead>
     <tbody>
-     <tr><th>Preço</th>{items.map((o:any)=><td key={o.listingId} className={minAmount!=null&&Number(o.amount)===minAmount?'bestPrice':''}><strong>{money(Number(o.amount),o.currency)}</strong>{minAmount!=null&&Number(o.amount)===minAmount&&<small> · menor preço</small>}</td>)}</tr>
+     <tr><th>Preço</th>{items.map((o:any)=>{const usd=Number(o.amountUsd ?? o.amount);const isMin=minAmount!=null&&usd===minAmount;return <td key={o.listingId} className={isMin?'bestPrice':''}><strong>{money(Number(o.amount),o.currency)}</strong>{o.currency!=='USD'&&<small> · ≈ {money(usd,'USD')}</small>}{isMin&&<small> · menor preço</small>}</td>;})}</tr>
      <tr><th>Vendedor</th>{items.map((o:any)=><td key={o.listingId}>{o.seller}</td>)}</tr>
      <tr><th>Fabricante</th>{items.map((o:any)=><td key={o.listingId}>{o.product.manufacturer.name}</td>)}</tr>
      <tr><th>Tipo</th>{items.map((o:any)=><td key={o.listingId}>{o.product.type}</td>)}</tr>

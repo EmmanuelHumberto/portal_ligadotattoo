@@ -132,11 +132,15 @@ export class CommerceQuery {
         manufacturer:{name:x.manufacturer_name,slug:x.manufacturer_slug},
       },
       seller:x.seller,amount:Number(x.amount),currency:x.currency,
+      amountUsd:Number(x.amount)*(FX_TO_USD[x.currency]??1),
       availability:x.availability,observedAt:x.observed_at,
       outboundUrl:`/go/listing/${x.listing_id}`,
     }))};
   }
 }
+
+// Taxas aproximadas de referência (USD base). Ajuste conforme necessário.
+const FX_TO_USD:Record<string,number>={USD:1,EUR:1.09,GBP:1.27,BRL:0.18};
 
 function domainOf(url:string|null|undefined):string|null {
   if(!url)return null;
