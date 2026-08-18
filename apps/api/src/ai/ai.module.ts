@@ -8,18 +8,21 @@ import {
 import { OpenAIAdapter } from './adapters/openai.adapter';
 import { AnthropicAdapter } from './adapters/anthropic.adapter';
 import { DeepSeekAdapter } from './adapters/deepseek.adapter';
+import { OllamaAdapter } from './adapters/ollama.adapter';
 import { AIAdminController } from './ai-admin.controller';
+import {AIExecutionLedgerRepository} from './ai-execution-ledger.repository';
 
 @Global()
 @Module({
   controllers:[AIAdminController],
   providers:[
     AIRegistryRepository,
-    OpenAIAdapter,AnthropicAdapter,DeepSeekAdapter,
+    AIExecutionLedgerRepository,
+    OpenAIAdapter,AnthropicAdapter,DeepSeekAdapter,OllamaAdapter,
     {provide:SECRET_RESOLVER,useClass:EnvironmentSecretResolver},
     {
       provide:AI_ADAPTERS,
-      inject:[OpenAIAdapter,AnthropicAdapter,DeepSeekAdapter],
+      inject:[OpenAIAdapter,AnthropicAdapter,DeepSeekAdapter,OllamaAdapter],
       useFactory:(...adapters:any[])=>adapters,
     },
     AIProviderHubService,

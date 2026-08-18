@@ -1,17 +1,21 @@
 import {
-  BadRequestException,Body,Controller,Delete,Get,Inject,NotFoundException,Patch,Param,Post,Query,
+  Body,Controller,Delete,Get,NotFoundException,Patch,Param,ParseUUIDPipe,Post,Query,
 } from '@nestjs/common';
-import { randomUUID,createHash } from 'node:crypto';
-import { Pool } from 'pg';
 import { Actor } from '../iam/actor.decorator';
+import type {ActorContext} from '../iam/actor-context';
 import { Public } from '../iam/public.decorator';
 import { RequireCapability } from '../iam/require-capability.decorator';
-import { PG_POOL } from '../platform/database.module';
+import {
+  aiDraftInput,approvalInput,createEditorialInput,scheduleInput,
+  socialEditorialInput,updateEditorialInput,workflowVersionInput,
+} from './admin-editorial.input';
 import { CreateEditorialHandler } from './create-editorial.handler';
 import { EditorialWorkflowHandler } from './review-publish.handler';
 import { EditorialQuery } from './editorial.query';
 import { GenerateAIDraftHandler } from './generate-ai-draft.handler';
+import {IngestSocialEditorialHandler} from './ingest-social-editorial.handler';
 import { StoryCandidateQuery } from './story-candidate.query';
+import {UpdateEditorialDraftHandler} from './update-editorial-draft.handler';
 
 @Controller()
 export class EditorialController {
@@ -21,7 +25,8 @@ export class EditorialController {
     private readonly query:EditorialQuery,
     private readonly aiDraft:GenerateAIDraftHandler,
     private readonly candidates:StoryCandidateQuery,
-    @Inject(PG_POOL) private readonly pool:Pool,
+    private readonly updateDraft:UpdateEditorialDraftHandler,
+    private readonly ingestSocialHandler:IngestSocialEditorialHandler,
   ) {}
 
   @Get('public/editorial')
@@ -52,7 +57,7 @@ export class EditorialController {
 
   @Get('admin/editorial/:id')
   @RequireCapability('editorial.read')
-  async adminDetail(@Param('id') id:string) {
+  async adminDetail(@Param('id',ParseUUIDPipe) id:string) {
     const result=await this.query.adminById(id);
     if (!result) throw new NotFoundException('Editorial content not found');
     return result;
@@ -60,157 +65,74 @@ export class EditorialController {
 
   @Post('admin/editorial')
   @RequireCapability('editorial.write')
-  create(@Body() body:any,@Actor() actor:any) {
-    return this.createHandler.execute(body,actor.actorId);
+  create(@Body() body:unknown,@Actor() actor:ActorContext) {
+    return this.createHandler.execute(createEditorialInput(body),actor.actorId);
   }
 
   @Patch('admin/editorial/:id')
   @RequireCapability('editorial.write')
-  async update(@Param('id') id:string,@Body() body:any) {
-    const title=String(body?.title ?? '').trim();
-    if(!title)throw new BadRequestException('Título é obrigatório');
-    const r=await this.pool.query(
-      `update editorial.content
-          set title=$2, subtitle=$3, summary=$4, body_document=$5::jsonb,
-              version=version+1, updated_at=now()
-        where id=$1 and status='DRAFT'
-        returning id,title,subtitle,summary,version`,
-      [id, title,
-       body.subtitle ?? null,
-       body.summary ?? null,
-       JSON.stringify(body.body ?? {version:1,blocks:[]})],
-    );
-    if(!r.rowCount)throw new BadRequestException('Somente rascunhos podem ser editados');
-    return r.rows[0];
+  update(@Param('id',ParseUUIDPipe) id:string,@Body() body:unknown,
+    @Actor() actor:ActorContext) {
+    return this.updateDraft.execute(id,updateEditorialInput(body),actor.actorId);
   }
 
   @Post('admin/editorial/ingest-social')
   @RequireCapability('editorial.write')
-  async ingestSocial(@Body() body:any) {
-    const url=String(body?.url ?? '').trim();
-    const text=String(body?.text ?? '').trim();
-    if(!url && !text)throw new BadRequestException('URL ou texto da postagem são obrigatórios');
-    const sourceId=await this.socialSourceId();
-
-    // Fallback manual: se o texto foi colado, cria o candidato direto (sem depender de scraping).
-    if(text){
-      const title=(text.split(/\n/)[0] ?? '').slice(0,140) || url || 'Postagem de rede social';
-      const fingerprint=createHash('sha256').update(text).digest('hex');
-      const mediaIds=Array.isArray(body?.mediaIds)
-        ? body.mediaIds.map((x:unknown)=>String(x)).filter(Boolean)
-        : (body?.mediaId ? [String(body.mediaId)] : []);
-      const snapshotId=randomUUID();
-      // Hash único por importação (com salt) para nunca conflitar com snapshots anteriores.
-      const snapshotSha=createHash('sha256').update(text+':'+snapshotId).digest('hex');
-      await this.pool.query(
-        `insert into ingestion.snapshot
-         (id,source_id,url,content_type,http_status,sha256,body_bytes,observed_at)
-         values ($1,$2,$3,'text/plain',200,$4,$5,now())`,
-        [snapshotId,sourceId,url,snapshotSha,Buffer.from(text)],
-      );
-      await this.pool.query(
-        `insert into ingestion.extraction
-         (id,snapshot_id,title,text_content,structured_data,fingerprint,created_at)
-         values (gen_random_uuid(),$1,$2,$3,$4::jsonb,$5,now())`,
-        [snapshotId,title,text,JSON.stringify({mediaIds}),fingerprint],
-      );
-      const candidateId=randomUUID();
-      await this.pool.query(
-        `insert into editorial.story_candidate
-         (id,source_id,source_snapshot_id,source_url,title,detected_type,verbatim,image_media_id,status,created_at)
-         values ($1,$2,$3,$4,$5,'BLOG',true,$6,'NEW',now())`,
-        [candidateId,sourceId,snapshotId,url,title, mediaIds[0] ?? null],
-      );
-      await this.pool.query(
-        `insert into ops.job
-         (id,job_type,job_version,payload,status,available_at,deduplication_key)
-         values (gen_random_uuid(),'editorial.auto_draft',1,$1::jsonb,'PENDING',now(),$2)
-         on conflict (job_type,deduplication_key)
-           where deduplication_key is not null do nothing`,
-        [JSON.stringify({candidateId}),'auto-draft:'+candidateId],
-      );
-      if(!body?.mediaId){
-        await this.pool.query(
-          `insert into ops.job
-           (id,job_type,job_version,payload,status,available_at,deduplication_key)
-           values (gen_random_uuid(),'editorial.extract_image',1,$1::jsonb,'PENDING',now(),$2)
-           on conflict (job_type,deduplication_key)
-             where deduplication_key is not null do nothing`,
-          [JSON.stringify({candidateId,url,imageUrl:String(body?.imageUrl ?? '')}),'extract-image:'+candidateId],
-        );
-      }
-      return {enqueued:1,candidateId,mode:'manual'};
-    }
-
-    const r=await this.pool.query(
-      `insert into ops.job
-       (id,job_type,job_version,payload,status,available_at,deduplication_key)
-       values (gen_random_uuid(),'ingestion.collect_article',1,$1::jsonb,'PENDING',now(),$2)
-       on conflict (job_type,deduplication_key)
-         where deduplication_key is not null do nothing`,
-      [JSON.stringify({sourceId,url,requestedType:'BLOG',verbatim:true}),'social-article:'+url],
-    );
-    return {enqueued:r.rowCount ?? 0,mode:'scrape'};
-  }
-
-  private async socialSourceId():Promise<string>{
-    const existing=await this.pool.query(
-      `select id from ingestion.source where kind='SOCIAL' limit 1`,
-    );
-    if(existing.rowCount)return existing.rows[0].id;
-    const id=randomUUID();
-    await this.pool.query(
-      `insert into ingestion.source
-       (id,name,kind,base_url,allowed_hosts,status)
-       values ($1,'Redes sociais','SOCIAL','https://www.instagram.com/','{}','ACTIVE')`,
-      [id],
-    );
-    return id;
+  ingestSocial(@Body() body:unknown,@Actor() actor:ActorContext) {
+    return this.ingestSocialHandler.execute(socialEditorialInput(body),actor.actorId);
   }
 
   @Post('admin/editorial/:id/submit')
   @RequireCapability('editorial.write')
-  submit(@Param('id') id:string,@Body() body:any,@Actor() actor:any) {
-    return this.workflow.submit(id,body.expectedVersion,actor.actorId);
+  submit(@Param('id',ParseUUIDPipe) id:string,@Body() body:unknown,
+    @Actor() actor:ActorContext) {
+    return this.workflow.submit(id,workflowVersionInput(body),actor.actorId);
   }
 
   @Post('admin/editorial/:id/approve')
   @RequireCapability('editorial.approve')
-  approve(@Param('id') id:string,@Body() body:any,@Actor() actor:any) {
+  approve(@Param('id',ParseUUIDPipe) id:string,@Body() body:unknown,
+    @Actor() actor:ActorContext) {
+    const input=approvalInput(body);
     return this.workflow.approve(
-      id,body.expectedVersion,actor.actorId,body.reason,
+      id,input.expectedVersion,actor.actorId,input.reason,
     );
   }
 
   @Post('admin/editorial/:id/schedule')
   @RequireCapability('editorial.publish')
-  schedule(@Param('id') id:string,@Body() body:any,@Actor() actor:any) {
+  schedule(@Param('id',ParseUUIDPipe) id:string,@Body() body:unknown,
+    @Actor() actor:ActorContext) {
+    const input=scheduleInput(body);
     return this.workflow.schedule(
-      id,body.expectedVersion,actor.actorId,new Date(body.publishAt),
+      id,input.expectedVersion,actor.actorId,input.publishAt,
     );
   }
 
   @Post('admin/editorial/:id/publish')
   @RequireCapability('editorial.publish')
-  publish(@Param('id') id:string,@Body() body:any,@Actor() actor:any) {
-    return this.workflow.publish(id,body.expectedVersion,actor.actorId);
+  publish(@Param('id',ParseUUIDPipe) id:string,@Body() body:unknown,
+    @Actor() actor:ActorContext) {
+    return this.workflow.publish(id,workflowVersionInput(body),actor.actorId);
   }
 
   @Delete('admin/editorial/:id')
   @RequireCapability('editorial.write')
-  remove(@Param('id') id:string,@Body() body:any,@Actor() actor:any) {
-    return this.workflow.remove(id,body.expectedVersion,actor.actorId);
+  remove(@Param('id',ParseUUIDPipe) id:string,@Body() body:unknown,
+    @Actor() actor:ActorContext) {
+    return this.workflow.remove(id,workflowVersionInput(body),actor.actorId);
   }
 
   @Post('admin/editorial/:id/unpublish')
   @RequireCapability('editorial.publish')
-  unpublish(@Param('id') id:string,@Body() body:any,@Actor() actor:any) {
-    return this.workflow.unpublish(id,body.expectedVersion,actor.actorId);
+  unpublish(@Param('id',ParseUUIDPipe) id:string,@Body() body:unknown,
+    @Actor() actor:ActorContext) {
+    return this.workflow.unpublish(id,workflowVersionInput(body),actor.actorId);
   }
 
   @Post('admin/editorial/ai-draft')
   @RequireCapability('editorial.write')
-  ai(@Body() body:any,@Actor() actor:any) {
-    return this.aiDraft.execute({...body,actorId:actor.actorId});
+  ai(@Body() body:unknown,@Actor() actor:ActorContext) {
+    return this.aiDraft.execute({...aiDraftInput(body),actorId:actor.actorId});
   }
 }

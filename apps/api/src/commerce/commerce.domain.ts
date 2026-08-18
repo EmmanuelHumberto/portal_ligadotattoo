@@ -13,7 +13,10 @@ export class Listing {
     readonly version:number,
   ) {}
 
-  static create(input:any) {
+  static create(input:{
+    id:string;sellerId:string;productModelId:string;sourceUrl:string;
+    externalId?:string;affiliateMode?:'NONE'|'TEMPLATE'|'DIRECT';
+  }) {
     const u=new URL(input.sourceUrl);
     if (!['https:','http:'].includes(u.protocol))
       throw new Error('Invalid listing URL');
@@ -28,7 +31,10 @@ export class Listing {
 }
 
 export class PriceObservation {
-  static create(input:any) {
+  static create(input:{
+    id:string;listingId:string;amount:number;currency:string;availability?:string;
+    observedAt?:Date;sourceSnapshotId?:string;
+  }) {
     const amount=Number(input.amount);
     if (!Number.isFinite(amount) || amount < 0)
       throw new Error('Invalid price');

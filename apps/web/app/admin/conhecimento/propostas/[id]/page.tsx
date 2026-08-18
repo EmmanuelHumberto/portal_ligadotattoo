@@ -25,7 +25,6 @@ export default async function Page({params}:{params:Promise<{id:string}>}){
   <AdminAccessState status={result.status}/>
  </>;
  const p=result.data;
- const title=p.subject?.name ?? `${p.subject_type} · ${p.subject_id}`;
  return <>
   <AdminPageHeader eyebrow="Governança" title={p.property_key}
    description={`${p.subject_type} · ${p.status} · versão ${p.version}`}/>

@@ -17,7 +17,7 @@ export async function setAutoDraft(
 }
 
 export async function runAutoDraft(
-  _prev:ActionResult,formData:FormData,
+  _prev:ActionResult,_formData:FormData,
 ):Promise<ActionResult>{
  const result=await adminMutate<{enqueued:number}>('/admin/editorial-config/auto-draft/run',{
   method:'POST',body:{},

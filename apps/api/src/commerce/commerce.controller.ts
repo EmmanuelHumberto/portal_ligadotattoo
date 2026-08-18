@@ -1,14 +1,13 @@
-import {
-  BadRequestException,Body,Controller,Get,Inject,NotFoundException,Param,Post,Query,Res,
-} from '@nestjs/common';
+import {BadRequestException,Body,Controller,Get,NotFoundException,Param,
+  ParseUUIDPipe,Post,Query,Res} from '@nestjs/common';
 import { Response } from 'express';
-import { Pool } from 'pg';
-import { PG_POOL } from '../platform/database.module';
 import { Public } from '../iam/public.decorator';
 import { RequireCapability } from '../iam/require-capability.decorator';
+import {listingUrlInput,priceInput} from './admin-commerce.input';
 import { CommerceQuery } from './commerce.query';
 import { AffiliateLinkService } from './affiliate-link.service';
 import { RecordPriceHandler } from './record-price.handler';
+import {SetListingUrlHandler} from './set-listing-url.handler';
 
 @Controller()
 export class CommerceController {
@@ -16,7 +15,7 @@ export class CommerceController {
     private readonly query:CommerceQuery,
     private readonly links:AffiliateLinkService,
     private readonly recordPrice:RecordPriceHandler,
-    @Inject(PG_POOL) private readonly pool:Pool,
+    private readonly setUrl:SetListingUrlHandler,
   ) {}
 
   @Get('admin/listings')
@@ -27,23 +26,14 @@ export class CommerceController {
 
   @Post('admin/listings/:id/prices')
   @RequireCapability('commerce.manage')
-  recordPriceObservation(@Param('id') id:string,@Body() body:any) {
-    return this.recordPrice.execute({listingId:id,...body});
+  recordPriceObservation(@Param('id',ParseUUIDPipe) id:string,@Body() body:unknown) {
+    return this.recordPrice.execute({listingId:id,...priceInput(body)});
   }
 
   @Post('admin/listings/:id/url')
   @RequireCapability('commerce.manage')
-  async setListingUrl(@Param('id') id:string,@Body() body:any) {
-    const url=String(body.url ?? '').trim();
-    if(!/^https?:\/\//i.test(url))throw new BadRequestException('Invalid URL');
-    const r=await this.pool.query(
-      `update commerce.listing
-          set url=$2,updated_at=now(),version=version+1
-        where id=$1 returning id,url`,
-      [id,url],
-    );
-    if(!r.rowCount)throw new NotFoundException('Listing not found');
-    return r.rows[0];
+  setListingUrl(@Param('id',ParseUUIDPipe) id:string,@Body() body:unknown) {
+    return this.setUrl.execute(id,listingUrlInput(body));
   }
 
   @Get('public/offers/compare')

@@ -3,6 +3,7 @@
 import {revalidatePath} from 'next/cache';
 import {adminApi,adminMutate,adminUpload} from '../../../../lib/admin-api';
 import type {ActionResult} from '../../../../lib/admin-action';
+import type {EditorialBlock} from '../../../../lib/public-api-contracts';
 
 export async function updateEditorial(
   _prev:ActionResult,formData:FormData,
@@ -15,7 +16,9 @@ export async function updateEditorial(
  if(!id||!title)return {ok:false,status:422};
 
  // Preserva blocos não-textuais (imagens etc.) e substitui os de texto.
- const current=await adminApi<{body?:{version:number;blocks:Array<any>}}>(`/admin/editorial/${id}`);
+ const current=await adminApi<{
+  body?:{version:number;blocks:EditorialBlock[]};
+ }>(`/admin/editorial/${id}`);
  const existing=current.ok ? (current.data.body?.blocks ?? []) : [];
  const nonText=existing.filter(b=>b.type!=='paragraph' && b.type!=='heading');
  const textBlocks=text
@@ -45,7 +48,7 @@ export async function attachMedia(
 
  const current=await adminApi<{
   title:string;subtitle?:string|null;summary?:string|null;
-  body?:{version:number;blocks:Array<any>};
+  body?:{version:number;blocks:EditorialBlock[]};
  }>(`/admin/editorial/${id}`);
  if(!current.ok)return {ok:false,status:current.status};
 

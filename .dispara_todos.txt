@@ -1,0 +1,20 @@
+=== disparando ===
+INSERT 0 1
+=== aguardando 300s ===
+=== docs por fabricante ===
+      name       | count 
+-----------------+-------
+ Cheyenne        |    32
+ Ink Machines    |    21
+ FK Irons        |    19
+ Workhorse Irons |     5
+ Inkjecta        |     1
+(5 rows)
+
+=== job status ===
+ status  | attempts | last_error 
+---------+----------+------------
+ PENDING |        0 | 
+ PENDING |        0 | 
+(2 rows)
+

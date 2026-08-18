@@ -18,18 +18,18 @@ export class CatalogCollectPricesHandler implements JobHandler {
     const listings=await this.pool.query(
       `select li.id, li.url
          from commerce.listing li
-        where li.status='ACTIVE'
+         join commerce.seller s on s.id=li.seller_id
+        where li.status in ('ACTIVE','STALE')
           and li.url not like '%#%'
           and not exists (
             select 1 from commerce.price_observation po
              where po.listing_id=li.id
-               and po.observed_at >= now() - interval '7 days'
+               and po.observed_at >= now() - s.public_freshness_interval
           )`,
     );
-    let collected=0;
     for(const li of listings.rows){
       try {
-        if(await this.collectOne(li))collected++;
+        await this.collectOne(li);
       } catch {
         // segue
       }
@@ -59,6 +59,12 @@ export class CatalogCollectPricesHandler implements JobHandler {
     await emitPriceObserved(this.pool,{
       listingId:li.id,observationId,amount,currency,
     });
+    await this.pool.query(
+      `update commerce.listing
+          set status='ACTIVE',last_observed_at=now(),updated_at=now(),version=version+1
+        where id=$1`,
+      [li.id],
+    );
     return true;
   }
 }

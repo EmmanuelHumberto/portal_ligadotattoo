@@ -1,0 +1,7 @@
+--- todos os containers ---
+infra-postgres-1 | Created
+infra-redis-1 | Up 19 minutes
+infra-minio-1 | Up 19 minutes
+--- logs postgres ---
+--- disco agora ---
+/dev/sda1       104G   92G  7,6G  93% /

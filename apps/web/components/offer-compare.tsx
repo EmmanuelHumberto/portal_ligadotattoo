@@ -3,7 +3,11 @@ import {createContext,useContext,useMemo,useState} from 'react';
 import {track} from '../lib/analytics';
 
 export type OfferItem={listingId:string;label:string;seller:string};
-const C=createContext<any>(null);
+type OfferCompareContext={
+ items:OfferItem[];add:(item:OfferItem)=>void;remove:(id:string)=>void;
+ clear:()=>void;
+};
+const C=createContext<OfferCompareContext|null>(null);
 
 export function OfferCompareProvider({children}:{children:React.ReactNode}){
  const [items,setItems]=useState<OfferItem[]>([]);
@@ -23,7 +27,7 @@ export const useOfferCompare=()=>useContext(C);
 export function OfferCompareButton({item}:{item:OfferItem}){
  const c=useOfferCompare();
  if(!c)return null;
- const added=c.items.some((i:OfferItem)=>i.listingId===item.listingId);
+ const added=c.items.some(i=>i.listingId===item.listingId);
  return <button className="btn secondary" type="button" aria-pressed={added}
   onClick={()=>added?c.remove(item.listingId):c.add(item)}>
   {added?'Na comparação ✓':'Comparar preço'}
@@ -34,10 +38,10 @@ function OfferCompareDock(){
  const c=useOfferCompare();if(!c?.items.length)return null;
  return <div className="compareDock card">
   <strong>Comparar preços ({c.items.length}/4)</strong>
-  <div>{c.items.map((x:OfferItem)=><span key={x.listingId}>{x.label}
+  <div>{c.items.map(x=><span key={x.listingId}>{x.label}
    <button aria-label={`Remover ${x.label}`} onClick={()=>c.remove(x.listingId)}>×</button>
   </span>)}</div>
-  <a className="btn" href={`/comparar-ofertas?ids=${c.items.map((x:OfferItem)=>x.listingId).join(',')}`}>
+  <a className="btn" href={`/comparar-ofertas?ids=${c.items.map(x=>x.listingId).join(',')}`}>
    Comparar agora
   </a>
  </div>;

@@ -24,7 +24,7 @@ export class JobRunner {
     return result.rowCount ?? 0;
   }
 
-  async runOne(): Promise<boolean> {
+  async runOne(jobId?:string): Promise<boolean> {
     const c = await this.pool.connect();
     let transactionOpen=false;
     try {
@@ -35,9 +35,11 @@ export class JobRunner {
            from ops.job
           where status in ('PENDING','RETRY')
             and available_at <= now()
+            and ($1::uuid is null or id=$1)
           order by available_at
           for update skip locked
           limit 1`,
+        [jobId??null],
       );
       if (!r.rowCount) {
         await c.query('COMMIT');

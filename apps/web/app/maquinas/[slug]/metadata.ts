@@ -1,8 +1,9 @@
 import {api} from '../../../lib/api';
 import {pageMetadata} from '../../../lib/seo';
+import type {ProductDetail} from '../../../lib/public-api-contracts';
 
 export async function productMetadata(slug:string){
- const p=await api(`/public/products/${slug}`,{cache:'no-store'});
+ const p=await api<ProductDetail>(`/public/products/${slug}`,{cache:'no-store'});
  return pageMetadata({
   title:p.name,
   description:p.summary??`Especificações, dados e ofertas de ${p.name}.`,

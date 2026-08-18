@@ -1,5 +1,8 @@
 import {api} from '../../lib/api';
 import {SiteHeader} from '../../components/site-header';
+import type {
+ ProductComparison,ProductDetail,PublicSpecification,SearchParams,
+} from '../../lib/public-api-contracts';
 
 const RADAR_COLORS=['#c9a66b','#5aa9e6','#e66b5a','#7fd69a'];
 const RADAR_AXES=[
@@ -11,11 +14,14 @@ const RADAR_AXES=[
  {label:'Protrusão do grip',keys:['grip_protrusion']},
 ];
 
-export default async function Compare({searchParams}:{searchParams:Promise<any>}){
- const {ids=''}=await searchParams;
- const clean=String(ids).split(',').filter(Boolean).slice(0,4);
- const data=clean.length?await api(`/public/products/compare?ids=${clean.join(',')}`):{items:[]};
- const items=data.items??[];
+export default async function Compare({searchParams}:{searchParams:Promise<SearchParams>}){
+ const raw=(await searchParams).ids;
+ const ids=Array.isArray(raw)?raw[0]??'':raw??'';
+ const clean=ids.split(',').filter(Boolean).slice(0,4);
+ const data:ProductComparison=clean.length
+  ? await api<ProductComparison>(`/public/products/compare?ids=${clean.join(',')}`)
+  : {items:[]};
+ const items=data.items;
  const rows=collect(items);
  return <><SiteHeader/><main className="shell comparePage">
   <p className="accent">COMPARADOR</p><h1>Compare máquinas lado a lado</h1>
@@ -24,10 +30,10 @@ export default async function Compare({searchParams}:{searchParams:Promise<any>}
    <RadarChart items={items}/>
    <div className="compareTable" role="region" aria-label="Comparação de máquinas" tabIndex={0}>
     <table>
-     <thead><tr><th>Característica</th>{items.map((p:any)=><th key={p.id}>{p.name}<small>{p.brand?.name}</small></th>)}</tr></thead>
+     <thead><tr><th>Característica</th>{items.map(p=><th key={p.id}>{p.name}<small>{p.brand.name}</small></th>)}</tr></thead>
      <tbody>
-      <tr><th>Preço (a partir de)</th>{items.map((p:any)=><td key={p.id}>{p.offersSummary?`${p.offersSummary.currency} ${p.offersSummary.fromAmount}`:'—'}</td>)}</tr>
-      {rows.map((r:any)=><tr key={r.key}><th>{r.label}</th>{items.map((p:any)=><td key={p.id}>{value(p,r.key)}</td>)}</tr>)}
+      <tr><th>Preço (a partir de)</th>{items.map(p=><td key={p.id}>{p.offersSummary?`${p.offersSummary.currency} ${p.offersSummary.fromAmount}`:'—'}</td>)}</tr>
+      {rows.map(r=><tr key={r.key}><th>{r.label}</th>{items.map(p=><td key={p.id}>{value(p,r.key)}</td>)}</tr>)}
      </tbody>
     </table>
    </div>
@@ -35,10 +41,17 @@ export default async function Compare({searchParams}:{searchParams:Promise<any>}
  </main></>
 }
 
-function collect(items:any[]){const m=new Map();for(const p of items)for(const s of p.specifications??[])m.set(s.key,{key:s.key,label:s.label});return [...m.values()]}
-function value(p:any,key:string){return p.specifications?.find((x:any)=>x.key===key)?.value??'—'}
+function collect(items:ProductDetail[]){
+ const rows=new Map<string,{key:string;label:string}>();
+ for(const product of items)for(const spec of product.specifications)
+  rows.set(spec.key,{key:spec.key,label:spec.label??spec.name??spec.key});
+ return [...rows.values()];
+}
+function value(product:ProductDetail,key:string){
+ return display(product.specifications.find(spec=>spec.key===key)?.value);
+}
 
-function toNumber(v:any):number|null{
+function toNumber(v:unknown):number|null{
  if(v==null)return null;
  if(typeof v==='number')return Number.isFinite(v)?v:null;
  if(typeof v==='string'){
@@ -48,15 +61,15 @@ function toNumber(v:any):number|null{
  return null;
 }
 
-function numFor(it:any,keys:string[]):number|null{
+function numFor(it:ProductDetail,keys:string[]):number|null{
  for(const k of keys){
-  const s=it.canonicalSpecifications?.find((x:any)=>x.key===k);
+  const s=it.canonicalSpecifications.find(x=>x.key===k);
   if(s){const v=toNumber(s.value);if(v!=null)return v;}
  }
  return null;
 }
 
-function RadarChart({items}:{items:any[]}){
+function RadarChart({items}:{items:ProductDetail[]}){
  const axes=RADAR_AXES.filter(a=>items.some(it=>numFor(it,a.keys)!=null));
  if(axes.length<2)return <div className="card emptyState">Dados numéricos insuficientes para o gráfico de radar.</div>;
  const n=axes.length;
@@ -84,4 +97,9 @@ function RadarChart({items}:{items:any[]}){
    <div className="radarLegend">{items.map((it,idx)=><span key={it.id} className="legendItem"><i style={{background:RADAR_COLORS[idx%RADAR_COLORS.length]}}/>{it.name}</span>)}</div>
   </div>
  </div>;
+}
+
+function display(value:PublicSpecification['value']|undefined):string{
+ if(value==null)return '—';
+ return typeof value==='string'?value:JSON.stringify(value);
 }

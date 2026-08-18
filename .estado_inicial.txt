@@ -1,0 +1,21 @@
+=== containers ===
+infra-minio-1 Up 37 hours
+infra-postgres-1 Up 36 hours (healthy)
+infra-redis-1 Up 37 hours
+=== app portas ===
+LISTEN 0      511          0.0.0.0:3001      0.0.0.0:*   
+LISTEN 0      511                *:3000            *:*   
+=== worker ativo? ===
+130173 sh -c tsx watch src/main.ts
+130174 node /home/hiatus/Projetos/ligadotattoo/Portal_ligadotattoo/repository/node_modules/.bin/tsx watch src/main.ts
+130284 node --watch dist/main.js
+=== docs atuais por fabricante ===
+      name       | count 
+-----------------+-------
+ Cheyenne        |    26
+ Ink Machines    |    21
+ FK Irons        |    19
+ Workhorse Irons |     5
+ Inkjecta        |     1
+(5 rows)
+

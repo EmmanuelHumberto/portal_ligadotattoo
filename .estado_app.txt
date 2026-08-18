@@ -1,0 +1,20 @@
+--- api health/ready ---
+{"status":"DOWN","service":"api","checks":[{"name":"database","status":"DOWN","latencyMs":12,"reason":"CONNECTION_UNAVAILABLE"}],"checkedAt":"2026-08-15T14:52:29.005Z"}
+--- api health/live ---
+{"status":"UP","service":"api"}
+--- web 3000 ---
+http=200
+--- processos portal ---
+7723 sh -c sh ../../scripts/dev-typescript.sh
+7724 sh ../../scripts/dev-typescript.sh
+7764 node --watch dist/main.js
+8433 sh -c sh ../../scripts/dev-typescript.sh
+8434 sh ../../scripts/dev-typescript.sh
+8474 node --watch dist/main.js
+9646 sh -c sh scripts/dev.sh
+9647 sh scripts/dev.sh
+9681 sh -c sh ../../scripts/dev-typescript.sh
+9682 sh ../../scripts/dev-typescript.sh
+9730 next-server (v16.3.0)
+9764 node --watch dist/main.js
+9864 /usr/bin/node dist/main.js

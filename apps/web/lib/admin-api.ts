@@ -1,5 +1,6 @@
 import {cookies,headers} from 'next/headers';
 import {classifyAdminStatus,type AdminApiStatus} from './admin-status';
+import {adminAuthorization} from './admin-authorization';
 
 const base=process.env.API_INTERNAL_URL ?? 'http://api:3000';
 const sessionCookie=process.env.ADMIN_SESSION_COOKIE ?? 'pt_session';
@@ -9,12 +10,12 @@ export type AdminApiResult<T> =
  | {ok:false;status:AdminApiStatus};
 
 async function requestAuthorization(){
- const inbound=(await headers()).get('authorization')?.trim();
- if(inbound&&/^Bearer\s+\S+$/i.test(inbound))return inbound;
-
- const token=(await cookies()).get(sessionCookie)?.value.trim();
- if(!token)return null;
- return /^Bearer\s+/i.test(token)?token:`Bearer ${token}`;
+ const requestHeaders=await headers();
+ return adminAuthorization({
+  authorization:requestHeaders.get('authorization'),
+  cloudflareAccessJwt:requestHeaders.get('cf-access-jwt-assertion'),
+  sessionToken:(await cookies()).get(sessionCookie)?.value,
+ });
 }
 
 export async function adminApi<T>(path:string):Promise<AdminApiResult<T>>{

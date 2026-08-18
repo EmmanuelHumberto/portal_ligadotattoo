@@ -1,6 +1,9 @@
 import {createHash} from 'node:crypto';
 import {request} from 'node:https';
 import type {IncomingMessage} from 'node:http';
+import {connect as connectHttp2} from 'node:http2';
+import {connect as tlsConnect} from 'node:tls';
+import {brotliDecompressSync,gunzipSync,inflateSync} from 'node:zlib';
 import {
   assertSafeTarget,type ResolveHost,type SafeTarget,
 } from './url-policy';
@@ -11,28 +14,30 @@ export type AcquisitionResult={
 };
 
 type Transport=(
-  target:SafeTarget,timeoutMs:number,maxBytes:number,
+  target:SafeTarget,timeoutMs:number,maxBytes:number,userAgent?:string,
 )=>Promise<{status:number;headers:IncomingMessage['headers'];body:Buffer}>;
 
 export class HttpAcquirer {
   constructor(
     private readonly resolveHost?:ResolveHost,
-    private readonly transport:Transport=httpsRequest,
+    private readonly transport:Transport=httpRequest,
   ) {}
 
   async acquire(input:{
     url:string;allowedHosts:string[];maxBytes?:number;timeoutMs?:number;
+    userAgent?:string;
   }):Promise<AcquisitionResult> {
     const maxBytes=bounded(input.maxBytes,5_000_000,1,10_000_000,'maxBytes');
     const timeoutMs=bounded(input.timeoutMs,15_000,100,60_000,'timeoutMs');
     return this.follow(
       input.url,input.allowedHosts,maxBytes,Date.now()+timeoutMs,0,
+      input.userAgent,
     );
   }
 
   private async follow(
     rawUrl:string,allowedHosts:string[],maxBytes:number,deadline:number,
-    redirectCount:number,
+    redirectCount:number,userAgent?:string,
   ):Promise<AcquisitionResult> {
     if(redirectCount>5)throw new Error('Too many redirects');
     const target=await withinDeadline(
@@ -41,7 +46,7 @@ export class HttpAcquirer {
     const remainingMs=deadline-Date.now();
     if(remainingMs<=0)throw new Error('HTTP acquisition timed out');
     const response=await withinDeadline(
-      this.transport(target,remainingMs,maxBytes),deadline,
+      this.transport(target,remainingMs,maxBytes,userAgent),deadline,
     );
 
     if(response.status>=300&&response.status<400){
@@ -49,7 +54,7 @@ export class HttpAcquirer {
       if(!location)throw new Error('Redirect without location');
       const next=new URL(location,target.url);
       return this.follow(
-        next.toString(),allowedHosts,maxBytes,deadline,redirectCount+1,
+        next.toString(),allowedHosts,maxBytes,deadline,redirectCount+1,userAgent,
       );
     }
     if(response.status<200||response.status>=300)
@@ -66,7 +71,7 @@ export class HttpAcquirer {
 }
 
 function httpsRequest(
-  target:SafeTarget,timeoutMs:number,maxBytes:number,
+  target:SafeTarget,timeoutMs:number,maxBytes:number,userAgent?:string,
 ):Promise<{status:number;headers:IncomingMessage['headers'];body:Buffer}> {
   return new Promise((resolve,reject)=>{
     let settled=false;
@@ -79,9 +84,9 @@ function httpsRequest(
     const req=request(target.url,{
       method:'GET',servername:target.url.hostname,
       headers:{
-        'user-agent':'PortalTattooBot/1.0 (+registered-source-ingestion)',
+        'user-agent':userAgent ?? 'PortalTattooBot/1.0 (+registered-source-ingestion)',
         accept:'text/html,application/json;q=0.9,*/*;q=0.1',
-        'accept-encoding':'identity',
+        'accept-encoding':'gzip, deflate, br',
       },
       lookup:(_hostname,options,callback)=>{
         if((options as {all?:boolean})?.all){
@@ -93,11 +98,6 @@ function httpsRequest(
       },
     },response=>{
       const encoding=singleHeader(response.headers['content-encoding']);
-      if(encoding&&encoding.toLowerCase()!=='identity'){
-        response.destroy();
-        finish(new Error('Compressed acquisition response is not allowed'));
-        return;
-      }
       const length=Number(singleHeader(response.headers['content-length']));
       if(Number.isFinite(length)&&length>maxBytes){
         response.destroy();
@@ -112,10 +112,16 @@ function httpsRequest(
           finish(new Error('Response exceeds acquisition limit'));
         } else chunks.push(chunk);
       });
-      response.on('end',()=>finish(undefined,{
-        status:response.statusCode??0,headers:response.headers,
-        body:Buffer.concat(chunks),
-      }));
+      response.on('end',()=>{
+        let body:Buffer;
+        try {
+          body=decodeBody(Buffer.concat(chunks),encoding,maxBytes);
+        } catch(error){finish(error as Error);return;}
+        finish(undefined,{
+          status:response.statusCode??0,headers:response.headers,
+          body,
+        });
+      });
       response.on('error',(error)=>finish(error));
     });
     req.setTimeout(timeoutMs,()=>{
@@ -124,6 +130,104 @@ function httpsRequest(
     req.on('error',(error)=>finish(error));
     req.end();
   });
+}
+
+async function httpRequest(
+  target:SafeTarget,timeoutMs:number,maxBytes:number,userAgent?:string,
+):Promise<{status:number;headers:IncomingMessage['headers'];body:Buffer}> {
+  // Tenta HTTP/2 primeiro (alguns sites exigem); cai para HTTP/1.1 se a
+  // negociação h2 falhar. O IP já foi resolvido/validado (anti-rebinding).
+  try {
+    return await http2Request(target,timeoutMs,maxBytes,userAgent);
+  } catch {
+    return await httpsRequest(target,timeoutMs,maxBytes,userAgent);
+  }
+}
+
+function http2Request(
+  target:SafeTarget,timeoutMs:number,maxBytes:number,userAgent?:string,
+):Promise<{status:number;headers:IncomingMessage['headers'];body:Buffer}> {
+  return new Promise((resolve,reject)=>{
+    let settled=false;
+    const finish=(error?:Error,value?:{
+      status:number;headers:IncomingMessage['headers'];body:Buffer;
+    })=>{
+      if(settled)return;settled=true;
+      if(error)reject(error);else resolve(value!);
+    };
+
+    let session:ReturnType<typeof connectHttp2>;
+    try {
+      session=connectHttp2(target.url,{
+        createConnection:()=>{
+          const first=target.addresses[0];
+          return tlsConnect({
+            host:first?.address,servername:target.url.hostname,port:443,
+            ALPNProtocols:['h2'],
+          });
+        },
+      });
+    } catch(e){finish(e as Error);return;}
+
+    session.setTimeout(timeoutMs,()=>{
+      session.destroy();finish(new Error('HTTP acquisition timed out'));
+    });
+    session.on('error',(e)=>finish(e));
+    session.on('connect',()=>{
+      const req=session.request({
+        ':method':'GET',
+        ':path':target.url.pathname+target.url.search,
+        'user-agent':userAgent ?? 'PortalTattooBot/1.0 (+registered-source-ingestion)',
+        accept:'text/html,application/json;q=0.9,*/*;q=0.1',
+        'accept-encoding':'gzip, deflate, br',
+      });
+      req.setTimeout(timeoutMs,()=>{
+        session.destroy();finish(new Error('HTTP acquisition timed out'));
+      });
+      const chunks:Buffer[]=[];let size=0;let status=0;
+      const rawHeaders:IncomingMessage['headers']={};
+      req.on('response',(headers)=>{
+        status=Number(headers[':status']??0);
+        for(const [k,v] of Object.entries(headers)){
+          if(!k.startsWith(':'))rawHeaders[k]=Array.isArray(v)?String(v[0]):String(v);
+        }
+      });
+      req.on('data',(chunk:Buffer)=>{
+        size+=chunk.length;
+        if(size>maxBytes){
+          session.destroy();finish(new Error('Response exceeds acquisition limit'));
+        } else chunks.push(chunk);
+      });
+      req.on('end',()=>{
+        session.close();
+        let body:Buffer;
+        try {
+          body=decodeBody(
+            Buffer.concat(chunks),String(rawHeaders['content-encoding']??''),
+            maxBytes,
+          );
+        } catch(error){finish(error as Error);return;}
+        finish(undefined,{status,headers:rawHeaders,body});
+      });
+      req.on('error',(e)=>{session.close();finish(e);});
+    });
+  });
+}
+
+export function decodeBody(body:Buffer,encoding:string|undefined,maxBytes:number) {
+  const normalized=(encoding??'').trim().toLowerCase();
+  let decoded:Buffer;
+  if(!normalized||normalized==='identity')decoded=body;
+  else if(normalized==='gzip'||normalized==='x-gzip')
+    decoded=gunzipSync(body,{maxOutputLength:maxBytes});
+  else if(normalized==='br')
+    decoded=brotliDecompressSync(body,{maxOutputLength:maxBytes});
+  else if(normalized==='deflate')
+    decoded=inflateSync(body,{maxOutputLength:maxBytes});
+  else throw new Error(`Unsupported content encoding: ${normalized}`);
+  if(decoded.byteLength>maxBytes)
+    throw new Error('Response exceeds acquisition limit after decompression');
+  return decoded;
 }
 
 function singleHeader(value:string|string[]|undefined) {

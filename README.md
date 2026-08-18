@@ -71,3 +71,11 @@ O avanço consolidado do roadmap está em
 [docs/IMPLEMENTATION_STATUS.md](docs/IMPLEMENTATION_STATUS.md).
 As rotas e projeções públicas de descoberta estão em
 [docs/PUBLIC_DISCOVERY.md](docs/PUBLIC_DISCOVERY.md).
+A auditoria arquitetural de 17 de agosto de 2026 está em
+[docs/AUDITORIA_ARQUITETURAL_2026-08-17.md](docs/AUDITORIA_ARQUITETURAL_2026-08-17.md).
+A decisão de modularidade progressiva adotada pelo projeto está em
+[docs/ADR-0002-modularidade-progressiva.md](docs/ADR-0002-modularidade-progressiva.md).
+O avanço da execução dessa decisão está em
+[docs/REFACTOR_PROGRESS_2026-08-17.md](docs/REFACTOR_PROGRESS_2026-08-17.md).
+O inventário de funcionalidades e os comandos operacionais estão no
+[Manual do Portal](docs/MANUAL_DO_PORTAL.md).

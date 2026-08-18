@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { TransactionManager } from '../platform/transaction-manager';
 import { CanonicalProposal } from './canonical-proposal.domain';
 import { CanonicalRepository } from './canonical.repository';
+import type {CanonicalProposalInput} from './admin-knowledge.input';
 
 @Injectable()
 export class CreateCanonicalProposalHandler {
@@ -11,7 +12,7 @@ export class CreateCanonicalProposalHandler {
     private readonly repository:CanonicalRepository,
   ) {}
 
-  execute(input:any,actorId:string) {
+  execute(input:CanonicalProposalInput,actorId:string) {
     return this.txm.run(async tx => {
       const proposal=CanonicalProposal.create({ id:randomUUID(),...input });
       await this.repository.createProposal(proposal,actorId,tx);

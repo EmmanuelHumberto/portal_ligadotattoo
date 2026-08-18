@@ -2,7 +2,9 @@ import {randomUUID} from 'node:crypto';
 import {Pool} from 'pg';
 import {afterAll,beforeAll,describe,expect,it} from 'vitest';
 import {DatabaseEventRouter} from '../../apps/worker/src/event-router';
-import {createRuntimeProcessors,ProcessorRegistry} from '../../apps/worker/src/processors';
+import {JobRunner} from '../../apps/worker/src/job-runner';
+import {OutboxDispatcher} from '../../apps/worker/src/outbox-dispatcher';
+import {ProductSearchProjectionHandler} from '../../apps/worker/src/projections/product-search.handler';
 
 const databaseUrl=process.env.TEST_DATABASE_URL;
 const integration=databaseUrl ? describe : describe.skip;
@@ -44,9 +46,14 @@ integration('worker runtime',()=>{
  });
 
  it('routes an outbox event and executes its projection job',async()=>{
-  const registry=new ProcessorRegistry(createRuntimeProcessors(pool));
-  await registry.tick({signal:new AbortController().signal});
-  await registry.tick({signal:new AbortController().signal});
+  const dispatcher=new OutboxDispatcher(pool,new DatabaseEventRouter(pool));
+  await dispatcher.dispatchBatch(1,eventId);
+  const queued=await pool.query(
+   'select id from ops.job where source_event_id=$1',[eventId],
+  );
+  const handler=new ProductSearchProjectionHandler(pool);
+  const runner=new JobRunner(pool,new Map([[handler.type,handler]]));
+  await runner.runOne(queued.rows[0].id);
 
   const [event,job,projection]=await Promise.all([
    pool.query('select status from ops.outbox_event where id=$1',[eventId]),

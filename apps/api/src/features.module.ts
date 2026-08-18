@@ -7,12 +7,22 @@ import { ExperimentService } from './analytics/experiment.service';
 import { FunnelQuery } from './analytics/funnel.query';
 import { QualityQuery } from './analytics/quality.query';
 import { CatalogModule } from './catalog/catalog.module';
+import {AttachProductImageHandler} from './catalog/attach-product-image.handler';
+import {CatalogTranslationRepository} from './catalog/catalog-translation.repository';
+import {CuratedProductFactRepository} from './catalog/curated-product-fact.repository';
 import { CommercePublicQuery } from './catalog/commerce-public.query';
 import { ProductController } from './catalog/catalog.controller.v2';
 import { AdminProductQuery } from './catalog/admin-product.query';
 import { CreateProductHandler } from './catalog/create-product.handler';
 import { ProductRepository } from './catalog/product.repository';
 import { PublicCatalogController } from './catalog/public-catalog.controller';
+import {InternalCatalogController} from './catalog/internal-catalog.controller';
+import {TranslateCatalogDescriptionHandler} from './catalog/translate-catalog-description.handler';
+import {RenameProductHandler} from './catalog/rename-product.handler';
+import {RunCatalogDiscoveryHandler} from './catalog/run-catalog-discovery.handler';
+import {SetProductSpecsHandler} from './catalog/set-product-specs.handler';
+import {SetProductTypeHandler} from './catalog/set-product-type.handler';
+import {UpdateProductMetaHandler} from './catalog/update-product-meta.handler';
 import { PublicCommerceController } from './catalog/public-commerce.controller';
 import {PublicManufacturerController} from './catalog/public-manufacturer.controller';
 import {PublicManufacturerQuery} from './catalog/public-manufacturer.query';
@@ -22,21 +32,29 @@ import { CommerceController } from './commerce/commerce.controller';
 import { CommerceQuery } from './commerce/commerce.query';
 import { CommerceRepository } from './commerce/commerce.repository';
 import { RecordPriceHandler } from './commerce/record-price.handler';
+import {SetListingUrlHandler} from './commerce/set-listing-url.handler';
 import { CreateEditorialHandler } from './editorial/create-editorial.handler';
 import { EditorialController } from './editorial/editorial.controller';
 import { EditorialQuery } from './editorial/editorial.query';
 import { EditorialRepository } from './editorial/editorial.repository';
 import { GenerateAIDraftHandler } from './editorial/generate-ai-draft.handler';
+import {IngestSocialEditorialHandler} from './editorial/ingest-social-editorial.handler';
 import { StoryCandidateQuery } from './editorial/story-candidate.query';
 import { InternalEditorialController } from './editorial/internal-editorial.controller';
 import { PipelineConfigController } from './editorial/pipeline-config.controller';
 import { EditorialTopicController } from './editorial/topic.controller';
 import { PipelineConfigRepository } from './editorial/pipeline-config.repository';
+import {RunEditorialAutoDraftHandler} from './editorial/run-editorial-auto-draft.handler';
+import {EditorialTopicRepository} from './editorial/editorial-topic.repository';
 import { EditorialWorkflowHandler } from './editorial/review-publish.handler';
+import {UpdateEditorialDraftHandler} from './editorial/update-editorial-draft.handler';
 import { MeController } from './iam/me.controller';
 import { IngestionController } from './ingestion/ingestion.controller';
 import { IngestionQuery } from './ingestion/ingestion.query';
 import { SourceRepository } from './ingestion/source.repository';
+import {CreateSourceHandler} from './ingestion/create-source.handler';
+import {CreateCrawlTargetHandler} from './ingestion/create-crawl-target.handler';
+import {RunIngestionHandler} from './ingestion/run-ingestion.handler';
 import { CreateCanonicalProposalHandler } from './knowledge/create-proposal.handler';
 import { DecideCanonicalProposalHandler } from './knowledge/decide-proposal.handler';
 import { KnowledgeController } from './knowledge/knowledge.controller';
@@ -54,6 +72,8 @@ import {createMediaDelivery} from './media/s3-media-delivery.adapter';
 import {createMediaStorage} from './media/s3-media-storage.adapter';
 import { SetMediaRightsHandler } from './media/set-media-rights.handler';
 import {UploadMediaHandler} from './media/upload-media.handler';
+import {RegisterMediaHandler} from './media/register-media.handler';
+import {GetMediaUrlHandler} from './media/get-media-url.handler';
 import { AuditQuery } from './ops/audit.query';
 import { OperationsController } from './ops/operations.controller';
 import { OperationsQuery } from './ops/operations.query';
@@ -70,6 +90,7 @@ import { LaboratoryQuery } from './laboratory/laboratory.query';
 const controllers = [
   ProductController,
   PublicCatalogController,
+  InternalCatalogController,
   PublicCommerceController,
   PublicManufacturerController,
   KnowledgeController,
@@ -96,6 +117,15 @@ const providers = [
   ProductRepository,
   AdminProductQuery,
   CreateProductHandler,
+  CatalogTranslationRepository,
+  TranslateCatalogDescriptionHandler,
+  AttachProductImageHandler,
+  CuratedProductFactRepository,
+  SetProductSpecsHandler,
+  SetProductTypeHandler,
+  UpdateProductMetaHandler,
+  RenameProductHandler,
+  RunCatalogDiscoveryHandler,
   PublicProductQuery,
   PublicManufacturerQuery,
   CommercePublicQuery,
@@ -110,16 +140,26 @@ const providers = [
   EditorialWorkflowHandler,
   EditorialQuery,
   GenerateAIDraftHandler,
+  IngestSocialEditorialHandler,
+  UpdateEditorialDraftHandler,
   StoryCandidateQuery,
   PipelineConfigRepository,
+  RunEditorialAutoDraftHandler,
+  EditorialTopicRepository,
   SourceRepository,
+  CreateSourceHandler,
+  CreateCrawlTargetHandler,
+  RunIngestionHandler,
   IngestionQuery,
   CommerceRepository,
   CommerceQuery,
   RecordPriceHandler,
+  SetListingUrlHandler,
   AffiliateLinkService,
   MediaRepository,
   UploadMediaHandler,
+  RegisterMediaHandler,
+  GetMediaUrlHandler,
   MediaLibraryQuery,
   PublicMediaQuery,
   SetMediaRightsHandler,

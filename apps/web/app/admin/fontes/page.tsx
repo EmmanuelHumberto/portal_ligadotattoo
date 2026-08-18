@@ -75,7 +75,7 @@ export default async function Page(){
    </div>
   </AdminActionForm>
 
-  <AdminPageHeader eyebrow="Ingestão" title="Fontes" description=""/>
+  <AdminPageHeader compact eyebrow="Ingestão" title="Fontes" description=""/>
   <AdminCollection result={sources} columns={[
    {key:'name',label:'Nome'},
    {key:'kind',label:'Tipo'},
@@ -84,7 +84,7 @@ export default async function Page(){
    {key:'updated_at',label:'Atualizada'},
   ]}/>
 
-  <AdminPageHeader eyebrow="Ingestão" title="Alvos de coleta" description=""/>
+  <AdminPageHeader compact eyebrow="Ingestão" title="Alvos de coleta" description=""/>
   <AdminCollection result={targets} columns={[
    {key:'url',label:'URL'},
    {key:'source_name',label:'Fonte'},

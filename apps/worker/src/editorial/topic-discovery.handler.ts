@@ -18,18 +18,20 @@ export class TopicDiscoveryHandler implements JobHandler {
       `select id,name,query,language,max_articles
          from editorial.topic where status='ACTIVE'`,
     );
-    let enqueued=0;
     for(const t of topics.rows as Topic[]){
-      try { enqueued += await this.discoverOne(t); }
+      try { await this.discoverOne(t); }
       catch(e) { console.error('topic_discovery_error',{topic:t.name,error:(e as Error).message}); }
     }
     return 'DONE';
   }
 
   private async discoverOne(topic:Topic):Promise<number>{
-    const q=`https://www.bing.com/news/search?q=${encodeURIComponent(topic.query)}&format=rss&mkt=${topic.language}`;
-    const r=await this.http.acquire({url:q,allowedHosts:[],maxBytes:2_000_000});
-    const items=parseRss(r.body.toString('utf8')).slice(0,topic.max_articles);
+    const base=`https://www.bing.com/news/search?format=rss&mkt=${topic.language}&q=`;
+    let items=await this.fetchItems(base+encodeURIComponent(topic.query), topic.max_articles);
+    if(!items.length){
+      // Bing não indexa anglicismos/termos isolados; adiciona contexto de tatuagem.
+      items=await this.fetchItems(base+encodeURIComponent(topic.query+' tatuagem'), topic.max_articles);
+    }
     console.log('topic_discovery_items',{topic:topic.name,items:items.length});
     if(!items.length)return 0;
 
@@ -52,6 +54,11 @@ export class TopicDiscoveryHandler implements JobHandler {
       [topic.id],
     );
     return n;
+  }
+
+  private async fetchItems(url:string,maxArticles:number){
+    const r=await this.http.acquire({url,allowedHosts:[],maxBytes:2_000_000});
+    return parseRss(r.body.toString('utf8')).slice(0,maxArticles);
   }
 
   private async ensureSource(topic:Topic):Promise<string>{

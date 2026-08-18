@@ -5,7 +5,7 @@ services:
       POSTGRES_USER: portal
       POSTGRES_PASSWORD: portal
       POSTGRES_DB: portal_tattoo
-    ports: ["5432:5432"]
+    ports: ["${POSTGRES_PORT:-5433}:5432"]
     volumes: ["pgdata:/var/lib/postgresql/data"]
   minio:
     image: minio/minio
@@ -15,6 +15,34 @@ services:
       MINIO_ROOT_PASSWORD: portal-dev-secret
     ports: ["9000:9000", "9001:9001"]
     volumes: ["miniodata:/data"]
+  ollama:
+    image: ollama/ollama:0.32.14
+    profiles: ["local-ai"]
+    restart: unless-stopped
+    environment:
+      OLLAMA_HOST: 0.0.0.0:11434
+      OLLAMA_NUM_PARALLEL: 1
+      OLLAMA_MAX_LOADED_MODELS: 1
+      OLLAMA_CONTEXT_LENGTH: 4096
+    ports: ["127.0.0.1:11434:11434"]
+    volumes: ["ollama_data:/root/.ollama"]
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+  ollama-pull:
+    image: ollama/ollama:0.32.14
+    profiles: ["local-ai"]
+    restart: "no"
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    entrypoint: ["/bin/sh", "-c"]
+    command: ["ollama pull $${OLLAMA_CHAT_MODEL:-qwen3.5:0.8b}"]
+    depends_on:
+      ollama: {condition: service_healthy}
 volumes:
   pgdata:
   miniodata:
+  ollama_data:
+    name: ${OLLAMA_VOLUME_NAME:-repository_ollama_data}

@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import {AdminCollection,AdminPageHeader} from '../../../components/admin-resource';
 import {AdminActionForm} from '../../../components/admin-action-form';
 import {adminApi} from '../../../lib/admin-api';
@@ -14,9 +15,9 @@ export default async function Page({searchParams}:{searchParams:Promise<{type?:s
  return <>
   <AdminPageHeader eyebrow="Catálogo" title="Produtos" description="Modelos de máquina e equipamentos do catálogo."/>
   <nav className="adminFilterBar" aria-label="Filtrar por tipo">
-   <a className={!type?'is-active':''} href="/admin/produtos">Todos</a>
+   <Link className={!type?'is-active':''} href="/admin/produtos">Todos</Link>
    {TYPES.map(t=>(
-    <a key={t} className={type===t?'is-active':''} href={`/admin/produtos?type=${t}`}>{t}</a>
+    <Link key={t} className={type===t?'is-active':''} href={`/admin/produtos?type=${t}`}>{t}</Link>
    ))}
   </nav>
   <AdminActionForm action={createProduct} className="card adminForm">

@@ -28,11 +28,45 @@ services:
       MINIO_ROOT_PASSWORD: ${OBJECT_STORAGE_SECRET_KEY}
     volumes: [minio_data:/data]
 
+  ollama:
+    image: ollama/ollama:0.32.14
+    profiles: ["local-ai"]
+    restart: unless-stopped
+    environment:
+      OLLAMA_HOST: 0.0.0.0:11434
+      OLLAMA_NUM_PARALLEL: 1
+      OLLAMA_MAX_LOADED_MODELS: 1
+      OLLAMA_CONTEXT_LENGTH: ${OLLAMA_CONTEXT_WINDOW:-4096}
+      OLLAMA_KEEP_ALIVE: ${OLLAMA_KEEP_ALIVE:-5m}
+    volumes: [ollama_data:/root/.ollama]
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2500M
+
+  ollama-pull:
+    image: ollama/ollama:0.32.14
+    profiles: ["local-ai"]
+    restart: "no"
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+      OLLAMA_CHAT_MODEL: ${OLLAMA_CHAT_MODEL:-qwen3.5:0.8b}
+    entrypoint: ["/bin/sh", "-c"]
+    command: ["ollama pull $$OLLAMA_CHAT_MODEL"]
+    depends_on:
+      ollama: {condition: service_healthy}
+
   migrate:
     build:
       context: ../..
       dockerfile: infra/docker/Dockerfile.api
-    env_file: [.env]
+    env_file: ["${PORTAL_ENV_FILE:-.env}"]
     command: ["npm", "run", "db:migrate", "-w", "@portal/api"]
     depends_on:
       postgres: {condition: service_healthy}
@@ -42,7 +76,7 @@ services:
     build:
       context: ../..
       dockerfile: infra/docker/Dockerfile.api
-    env_file: [.env]
+    env_file: ["${PORTAL_ENV_FILE:-.env}"]
     command: ["npm", "run", "bootstrap", "-w", "@portal/api"]
     depends_on:
       migrate: {condition: service_completed_successfully}
@@ -52,12 +86,12 @@ services:
     build:
       context: ../..
       dockerfile: infra/docker/Dockerfile.api
-    env_file: [.env]
+    env_file: ["${PORTAL_ENV_FILE:-.env}"]
     restart: unless-stopped
     depends_on:
       bootstrap: {condition: service_completed_successfully}
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:3001/health/ready >/dev/null"]
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3001/health/ready >/dev/null"]
       interval: 10s
       timeout: 3s
       retries: 20
@@ -66,7 +100,7 @@ services:
     build:
       context: ../..
       dockerfile: infra/docker/Dockerfile.worker
-    env_file: [.env]
+    env_file: ["${PORTAL_ENV_FILE:-.env}"]
     restart: unless-stopped
     depends_on:
       api: {condition: service_healthy}
@@ -75,13 +109,17 @@ services:
     build:
       context: ../..
       dockerfile: infra/docker/Dockerfile.web
-    env_file: [.env]
+      args:
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL}
+        MEDIA_PUBLIC_HOST: media.${SITE_DOMAIN}
+    env_file: ["${PORTAL_ENV_FILE:-.env}"]
     restart: unless-stopped
     depends_on:
       api: {condition: service_healthy}
 
   caddy:
     image: caddy:2-alpine
+    profiles: ["direct"]
     restart: unless-stopped
     ports: ["80:80", "443:443"]
     environment:
@@ -92,9 +130,23 @@ services:
       - caddy_config:/config
     depends_on: [web, api, minio]
 
+  cloudflared:
+    image: cloudflare/cloudflared:2026.7.2
+    profiles: ["tunnel"]
+    restart: unless-stopped
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN}
+    command: ["tunnel", "--no-autoupdate", "run"]
+    depends_on:
+      api: {condition: service_healthy}
+      web: {condition: service_started}
+      minio: {condition: service_started}
+
 volumes:
   postgres_data:
   redis_data:
   minio_data:
   caddy_data:
   caddy_config:
+  ollama_data:
+    name: ${OLLAMA_VOLUME_NAME:-repository_ollama_data}

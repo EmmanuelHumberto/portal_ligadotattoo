@@ -43,7 +43,7 @@ export default async function Page(){
    </div>
   </AdminActionForm>
 
-  <AdminPageHeader eyebrow="Governança" title="Propostas" description="Propostas pendentes de decisão canônica."/>
+  <AdminPageHeader compact eyebrow="Governança" title="Propostas" description="Propostas pendentes de decisão canônica."/>
   <AdminCollection result={proposals}
    hrefFor={row=>`/admin/conhecimento/propostas/${String(row.id)}`}
    columns={[
@@ -54,7 +54,7 @@ export default async function Page(){
     {key:'created_at',label:'Criada'},
    ]}/>
 
-  <AdminPageHeader eyebrow="Governança" title="Alegações" description="Alegações registradas com origem, confiança e status."/>
+  <AdminPageHeader compact eyebrow="Governança" title="Alegações" description="Alegações registradas com origem, confiança e status."/>
   <AdminCollection result={claims} columns={[
    {key:'subject_type',label:'Sujeito'},
    {key:'property_key',label:'Propriedade'},

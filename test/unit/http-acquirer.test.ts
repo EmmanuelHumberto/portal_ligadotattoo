@@ -1,5 +1,8 @@
 import {describe,expect,it,vi} from 'vitest';
-import {HttpAcquirer} from '../../apps/worker/src/ingestion/http-acquirer';
+import {gzipSync} from 'node:zlib';
+import {
+  decodeBody,HttpAcquirer,
+} from '../../apps/worker/src/ingestion/http-acquirer';
 import type {ResolveHost} from '../../apps/worker/src/ingestion/url-policy';
 
 const resolvePublic:ResolveHost=async()=>[{address:'8.8.8.8',family:4}];
@@ -80,5 +83,14 @@ describe('safe HTTP acquirer',()=>{
       url:'https://allowed.example',allowedHosts:['allowed.example'],
       timeoutMs:100,
     })).rejects.toThrow(/timed out/);
+  });
+
+  it('bounds decompressed responses and rejects malformed encodings',()=>{
+    const compressed=gzipSync(Buffer.alloc(20_000,65));
+    expect(()=>decodeBody(compressed,'gzip',1_000))
+      .toThrow(/larger than|exceeds|Cannot create a Buffer/i);
+    expect(()=>decodeBody(Buffer.from('not-gzip'),'gzip',1_000)).toThrow();
+    expect(()=>decodeBody(Buffer.from('ok'),'compress',1_000))
+      .toThrow(/Unsupported content encoding/);
   });
 });

@@ -23,7 +23,7 @@ export async function createTopic(
 }
 
 export async function runTopicDiscovery(
-  _prev:ActionResult,formData:FormData,
+  _prev:ActionResult,_formData:FormData,
 ):Promise<ActionResult>{
  const result=await adminMutate('/admin/editorial-topics/run',{
   method:'POST',body:{},

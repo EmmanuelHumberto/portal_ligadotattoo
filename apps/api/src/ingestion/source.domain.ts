@@ -1,5 +1,5 @@
 export type SourceKind =
-  | 'MANUFACTURER'|'RETAILER'|'NEWS'|'EVENT'|'TECHNICAL'|'OTHER';
+  | 'MANUFACTURER'|'RETAILER'|'NEWS'|'EVENT'|'TECHNICAL'|'OTHER'|'SOCIAL';
 
 export type RobotsPolicy = 'RESPECT'|'MANUAL_ALLOW'|'DISABLED';
 
@@ -16,7 +16,10 @@ export class Source {
     readonly version:number,
   ) {}
 
-  static create(input:any) {
+  static create(input:{
+    id:string;name:string;kind:SourceKind;baseUrl:string;allowedHosts?:string[];
+    robotsPolicy?:RobotsPolicy;crawlDelayMs?:number;
+  }) {
     const url=new URL(input.baseUrl);
     if (url.protocol !== 'https:') throw new Error('HTTPS source required');
     const hosts=[...new Set([url.hostname,...(input.allowedHosts ?? [])])]

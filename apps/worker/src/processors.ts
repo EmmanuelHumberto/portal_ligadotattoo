@@ -30,6 +30,7 @@ import {CatalogDiscoveryHandler} from './commerce/catalog-discovery.handler';
 import {CatalogCollectPricesHandler} from './commerce/catalog-collect-prices.handler';
 import {CatalogTranslateHandler} from './commerce/catalog-translate.handler';
 import {RetailerPriceHandler} from './commerce/retailer-price.handler';
+import {CatalogDocumentDiscoveryHandler} from './commerce/catalog-document-discovery.handler';
 
 export type ProcessorContext={signal:AbortSignal};
 export type Processor={key:string;tick(ctx:ProcessorContext):Promise<void>};
@@ -87,8 +88,12 @@ export function createRuntimeProcessors(
    new ManufacturerMediaHandler(pool,new HttpAcquirer(),new SimpleContentExtractor(),s3,bucket),
    new CatalogDiscoveryHandler(pool,new HttpAcquirer(),new SimpleContentExtractor(),s3,bucket),
    new CatalogCollectPricesHandler(pool,new HttpAcquirer(),new SimpleContentExtractor()),
-   new CatalogTranslateHandler(pool,env.DEEPSEEK_API_KEY ?? ''),
+   new CatalogTranslateHandler(
+    pool,env.API_INTERNAL_URL ?? 'http://localhost:3001',
+    env.INTERNAL_API_KEY ?? '',
+   ),
    new RetailerPriceHandler(pool,new HttpAcquirer(),new SimpleContentExtractor()),
+   new CatalogDocumentDiscoveryHandler(pool,new HttpAcquirer(),s3,bucket),
    new TopicDiscoveryHandler(pool,new HttpAcquirer()),
   {
    type:'ingestion.run_target',

@@ -8,10 +8,8 @@ import {sanitizeEvent} from './event-contract';
 export class AnalyticsIngestService {
  constructor(@Inject(PG_POOL) private readonly pool:Pool){}
 
- async accept(raw:any,request:{ip?:string;userAgent?:string}){
+ async accept(raw:unknown,request:{ip?:string;userAgent?:string}){
   const e=sanitizeEvent(raw);
-  if(!e.anonymousSessionId)throw new Error('SESSION_REQUIRED');
-
   // IP is used only to derive a short-lived abuse bucket, not persisted raw.
   const day=new Date().toISOString().slice(0,10);
   const abuseBucket=createHash('sha256')

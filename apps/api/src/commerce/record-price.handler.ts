@@ -4,6 +4,7 @@ import { TransactionManager } from '../platform/transaction-manager';
 import { OutboxRepository } from '../platform/outbox.repository';
 import { CommerceRepository } from './commerce.repository';
 import { PriceObservation } from './commerce.domain';
+import type {PriceInput} from './admin-commerce.input';
 
 @Injectable()
 export class RecordPriceHandler {
@@ -13,7 +14,7 @@ export class RecordPriceHandler {
     private readonly outbox:OutboxRepository,
   ) {}
 
-  execute(input:any) {
+  execute(input:PriceInput&{listingId:string}) {
     return this.txm.run(async tx => {
       const o=PriceObservation.create({id:randomUUID(),...input});
       await this.repo.insertObservation(o,tx);

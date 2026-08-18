@@ -2,9 +2,10 @@
 import {useRouter,useSearchParams} from 'next/navigation';
 import {useState} from 'react';
 import {track} from '../lib/analytics';
+import type {CatalogFacet,CatalogFacets} from '../lib/public-api-contracts';
 
 export function MachineFilters({facets,path='/maquinas',showType=true}:{
-  facets:any;path?:string;showType?:boolean;
+  facets:CatalogFacets;path?:string;showType?:boolean;
 }){
  const router=useRouter();const current=useSearchParams();
  const [draft,setDraft]=useState(()=>Object.fromEntries(current.entries()));
@@ -30,12 +31,14 @@ export function MachineFilters({facets,path='/maquinas',showType=true}:{
   </button>
  </aside>
 }
-function Select({label,value,values,onChange}:any){
+function Select({label,value,values,onChange}:{
+ label:string;value:string;values:CatalogFacet[];onChange:(value:string)=>void;
+}){
  return <label>{label}<select value={value}
   onChange={e=>onChange(e.target.value)}>
   <option value="">Todos</option>
-  {values.map((x:any)=><option key={x.value??x} value={x.value??x}>
-   {x.label??x}{x.count!=null?` (${x.count})`:''}
+  {values.map(x=><option key={x.value} value={x.value}>
+   {x.label}{x.count!=null?` (${x.count})`:''}
   </option>)}
  </select></label>
 }

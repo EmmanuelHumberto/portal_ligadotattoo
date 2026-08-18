@@ -1,0 +1,33 @@
+=== typecheck worker ===
+npm error path /home/hiatus/Projetos/ligadotattoo/Portal_ligadotattoo/repository/apps/worker
+npm error workspace @portal/worker
+npm error location /home/hiatus/Projetos/ligadotattoo/Portal_ligadotattoo/repository/apps/worker
+npm error command failed
+npm error command sh -c tsc --noEmit
+=== aguardando recompilar (15s) ===
+=== disparando ===
+INSERT 0 1
+=== aguardando 240s ===
+=== docs por fabricante ===
+      name       | count 
+-----------------+-------
+ Ink Machines    |    21
+ FK Irons        |    19
+ Cheyenne        |    15
+ Workhorse Irons |     5
+ Inkjecta        |     1
+(5 rows)
+
+=== erros recentes ===
+document_discovery_error { manufacturer: 'Mast Tattoo', error: 'Empty response body' }
+document_discovery_error {
+document_discovery_error { manufacturer: 'Kwadron', error: 'Empty response body' }
+document_discovery_error {
+document_discovery_error { manufacturer: 'Art Driver', error: 'HTTP acquisition failed: 500' }
+document_discovery_error {
+document_discovery_error { manufacturer: 'Barber DTS', error: 'HTTP acquisition failed: 403' }
+document_discovery_error { manufacturer: 'Mithra', error: 'certificate has expired' }
+document_discovery_error { manufacturer: 'Rocket Pen', error: 'HTTP acquisition failed: 403' }
+document_discovery_error {
+document_discovery_error { manufacturer: 'Sunskin', error: 'Empty response body' }
+document_discovery_error { manufacturer: 'Musotoku', error: 'HTTP acquisition failed: 403' }

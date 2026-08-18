@@ -2,11 +2,14 @@ export type RightsStatus=
   'UNKNOWN'|'PENDING'|'PERMITTED'|'RESTRICTED'|'EXPIRED'|'TAKEDOWN';
 
 export class MediaRights {
-  static create(input:any) {
+  static create(input:{
+    id:string;mediaAssetId:string;status:RightsStatus;basis?:string;
+    licenseName?:string;sourceUrl?:string;expiresAt?:Date;notes?:string;
+  }) {
     if (!input.mediaAssetId) throw new Error('mediaAssetId required');
     if (input.status==='PERMITTED' && !input.basis)
       throw new Error('Rights basis required for publication permission');
-    const expiresAt=input.expiresAt ? new Date(input.expiresAt) : null;
+    const expiresAt=input.expiresAt??null;
     if (expiresAt && Number.isNaN(expiresAt.getTime()))
       throw new Error('Invalid rights expiry');
     return {

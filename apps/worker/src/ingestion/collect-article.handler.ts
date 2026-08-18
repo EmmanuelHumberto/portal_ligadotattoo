@@ -67,6 +67,9 @@ export class CollectArticleHandler implements JobHandler {
       const extracted=await this.extractor.extract({
         contentType:result.contentType,body:result.body,url:result.finalUrl,
       });
+      if(extracted.blocked || !extracted.text.trim()){
+        return 'NON_RETRYABLE';
+      }
       const fingerprint=createHash('sha256')
         .update(extracted.text.trim().replace(/\s+/g,' ')).digest('hex');
 

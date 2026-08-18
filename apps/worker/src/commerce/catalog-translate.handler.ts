@@ -1,65 +1,45 @@
-import { Pool } from 'pg';
+import {Pool} from 'pg';
 import type { JobHandler, JobResult } from '../job-runner';
-
-const MODEL='deepseek-v4-flash';
 
 export class CatalogTranslateHandler implements JobHandler {
   readonly type='catalog.translate';
 
   constructor(
     private readonly pool:Pool,
-    private readonly apiKey:string,
+    private readonly apiBase:string,
+    private readonly internalKey:string,
   ) {}
 
   async handle():Promise<JobResult>{
-    if(!this.apiKey)return 'DONE';
+    if(!this.internalKey)return 'NON_RETRYABLE';
     const rows=await this.pool.query(
-      `select cf.subject_id, cf.value
-         from knowledge.canonical_fact cf
-        where cf.property_key='description'
-          and cf.decision_reason='CATALOG_IMPORT'
-        order by cf.id limit 40`,
+      `select p.id
+         from knowledge.canonical_proposal p
+        where p.subject_type='PRODUCT_MODEL'
+          and p.property_key='description' and p.status='PENDING'
+          and p.created_by='catalog-discovery'
+          and not exists (
+            select 1 from knowledge.canonical_proposal translated
+             where translated.subject_type=p.subject_type
+               and translated.subject_id=p.subject_id
+               and translated.property_key=p.property_key
+               and translated.status='PENDING'
+               and translated.created_by='ai:catalog.translate'
+          )
+        order by p.created_at limit 40`,
     );
     for(const r of rows.rows){
       try {
-        const translated=await this.translate(String(r.value));
-        if(!translated)continue;
-        await this.pool.query(
-          `update knowledge.canonical_fact
-              set value=$1::jsonb, decision_reason='CATALOG_TRANSLATED'
-            where subject_type='PRODUCT_MODEL'
-              and subject_id=$2
-              and property_key='description'
-              and decision_reason='CATALOG_IMPORT'`,
-          [JSON.stringify(translated),r.subject_id],
-        );
+        const response=await fetch(`${this.apiBase}/internal/catalog/translate-description`,{
+          method:'POST',headers:{
+            'content-type':'application/json','x-internal-key':this.internalKey,
+          },body:JSON.stringify({proposalId:r.id}),
+        });
+        if(!response.ok&&response.status>=500)return 'RETRYABLE';
       } catch {
-        // segue
+        return 'RETRYABLE';
       }
     }
     return 'DONE';
-  }
-
-  private async translate(text:string):Promise<string|null>{
-    const res=await fetch('https://api.deepseek.com/chat/completions',{
-      method:'POST',
-      headers:{
-        'content-type':'application/json',
-        authorization:`Bearer ${this.apiKey}`,
-      },
-      body:JSON.stringify({
-        model:MODEL,
-        messages:[
-          {role:'system',content:'Você traduz descrições de produtos de tatuagem para o português do Brasil. Traduza de forma natural e profissional. NÃO repita o nome do produto no início do texto. Mantenha termos técnicos quando apropriado (RCA, mAh, stroke, voltage, wireless, grip). Retorne APENAS o texto traduzido, sem aspas e sem comentários.'},
-          {role:'user',content:text},
-        ],
-        max_tokens:12000,
-        temperature:0.3,
-      }),
-    });
-    if(!res.ok)return null;
-    const data=await res.json() as any;
-    const content=data?.choices?.[0]?.message?.content;
-    return typeof content==='string' ? content.trim() : null;
   }
 }

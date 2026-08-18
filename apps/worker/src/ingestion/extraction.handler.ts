@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 
 export interface ContentExtractor {
   extract(input:{contentType:string|null;body:Buffer;url:string}):Promise<{
-    title?:string;text:string;links?:string[];
+    title?:string;text:string;links?:string[];blocked?:boolean;
     structured?:Record<string,unknown>;
   }>;
 }

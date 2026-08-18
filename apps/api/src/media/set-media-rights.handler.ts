@@ -4,6 +4,7 @@ import { TransactionManager } from '../platform/transaction-manager';
 import { PostgresAuditRepository } from '../platform/audit.repository';
 import { OutboxRepository } from '../platform/outbox.repository';
 import { MediaRights } from './media-rights.domain';
+import type {SetMediaRightsInput} from './admin-media.input';
 
 @Injectable()
 export class SetMediaRightsHandler {
@@ -13,14 +14,16 @@ export class SetMediaRightsHandler {
     private readonly outbox:OutboxRepository,
   ) {}
 
-  execute(input:any,actorId:string) {
+  execute(input:SetMediaRightsInput&{mediaAssetId:string},actorId:string) {
     return this.txm.run(async tx => {
       const rights=MediaRights.create({id:randomUUID(),...input});
       const asset=await tx.query(
         `select * from media.media_asset where id=$1 for update`,
         [rights.mediaAssetId],
       );
-      if (!asset.rowCount) throw new Error('Media asset not found');
+      if (!asset.rowCount)throw Object.assign(new Error('Media asset not found'),{
+        name:'NotFoundError',
+      });
       if (Number(asset.rows[0].version)!==Number(input.expectedVersion))
         throw Object.assign(new Error('Media asset changed'),{
           name:'ConcurrentModificationError',

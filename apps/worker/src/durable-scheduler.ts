@@ -133,7 +133,11 @@ export class DurableScheduler {
         (gen_random_uuid(),'media.expire_rights',1,'{}','PENDING',now(),
          'minute:'||floor(extract(epoch from now())/60)::bigint),
         (gen_random_uuid(),'commerce.mark_stale',1,'{}','PENDING',now(),
-         'five-minutes:'||floor(extract(epoch from now())/300)::bigint)
+         'five-minutes:'||floor(extract(epoch from now())/300)::bigint),
+        (gen_random_uuid(),'catalog.collect_prices',1,'{}','PENDING',now(),
+         'hour:'||floor(extract(epoch from now())/3600)::bigint),
+        (gen_random_uuid(),'catalog.discover_documents',1,'{}','PENDING',now(),
+         'day:'||to_char(now(),'YYYY-MM-DD'))
        on conflict (job_type,deduplication_key)
          where deduplication_key is not null do nothing`,
     );

@@ -17,28 +17,31 @@ export class PublicProductQuery {
     manufacturer?: string;
   }) {
     const limit = Math.min(Math.max(input.limit || 24, 1), 100);
-    const params: unknown[] = [];
-    const where: string[] = [`p.lifecycle <> 'UNKNOWN'`];
+    const filterParams: unknown[] = [];
+    const filterWhere: string[] = [`p.lifecycle <> 'UNKNOWN'`];
 
     if (input.productType) {
       const types=input.productType.split(',').filter(Boolean);
       if (types.length) {
-        params.push(types);
-        where.push(`p.product_type_key = ANY($${params.length})`);
+        filterParams.push(types);
+        filterWhere.push(`p.product_type_key = ANY($${filterParams.length})`);
       }
     }
     if (input.manufacturer) {
-      params.push(input.manufacturer);
-      where.push(`m.slug = $${params.length}`);
+      filterParams.push(input.manufacturer);
+      filterWhere.push(`m.slug = $${filterParams.length}`);
     }
+    const params=[...filterParams];
+    const where=[...filterWhere];
     if (input.cursor) {
       params.push(input.cursor);
       where.push(`p.id > $${params.length}::uuid`);
     }
     params.push(limit + 1);
 
-    const r = await this.pool.query(
+    const [r,totalResult] = await Promise.all([this.pool.query(
       `select p.id,p.slug,p.name,p.product_type_key,p.lifecycle,
+              p.manufacturer_id,
               m.name manufacturer_name,m.slug manufacturer_slug,
               b.name brand_name,
               (select coalesce(vh.storage_key,vc.storage_key,vt.storage_key,a.storage_key)
@@ -71,7 +74,13 @@ export class PublicProductQuery {
         order by p.id
         limit $${params.length}`,
       params,
-    );
+    ),this.pool.query(
+      `select count(*)::int total
+         from catalog.product_model p
+         join catalog.manufacturer m on m.id=p.manufacturer_id
+        where ${filterWhere.join(' and ')}`,
+      filterParams,
+    )]);
 
     const hasMore = r.rows.length > limit;
     const rows = r.rows.slice(0, limit);
@@ -89,6 +98,7 @@ export class PublicProductQuery {
       meta: {
         hasMore,
         nextCursor: hasMore ? rows.at(-1)?.id ?? null : null,
+        total:Number(totalResult.rows[0]?.total??0),
       },
     };
   }
@@ -96,6 +106,7 @@ export class PublicProductQuery {
   async bySlug(slug: string) {
     const base = await this.pool.query(
       `select p.id,p.slug,p.name,p.product_type_key,p.lifecycle,
+              p.manufacturer_id,
               m.name manufacturer_name,m.slug manufacturer_slug,
               b.name brand_name,
               exists(
@@ -108,13 +119,13 @@ export class PublicProductQuery {
          from catalog.product_model p
          join catalog.manufacturer m on m.id=p.manufacturer_id
          left join catalog.brand b on b.id=p.brand_id
-        where p.slug=$1`,
+        where p.slug=$1 and p.lifecycle<>'UNKNOWN'`,
       [slug],
     );
     if (!base.rowCount) return null;
     const row = base.rows[0];
 
-    const [facts, media, offer] = await Promise.all([
+    const [facts, media, offer, docs] = await Promise.all([
       this.pool.query(
         `select property_key, value, unit
            from knowledge.canonical_fact
@@ -160,6 +171,18 @@ export class PublicProductQuery {
             and po.observed_at >= now() - interval '7 days'`,
         [row.id],
       ),
+      this.pool.query(
+        `select a.id,a.attribution,a.mime_type,a.byte_size,a.storage_key
+           from media.media_link l
+           join media.media_asset a on a.id=l.media_asset_id
+          where l.subject_type='MANUFACTURER'
+            and l.subject_id=$1
+            and l.role='manual'
+            and a.status='ACTIVE'
+            and a.rights_status='PERMITTED'
+          order by a.attribution`,
+        [row.manufacturer_id],
+      ),
     ]);
 
     const deliveredMedia=await Promise.all(media.rows.map(async m=>({
@@ -198,6 +221,10 @@ export class PublicProductQuery {
         currency: offer.rows[0].currency,
         observedAt: offer.rows[0].observed_at,
       },
+      documents: await Promise.all(docs.rows.map(async d=>({
+        id:d.id,title:d.attribution ?? 'Manual',url:await this.delivery.url(d.storage_key),
+        mimeType:d.mime_type,byteSize:Number(d.byte_size ?? 0),
+      }))),
       isSyntheticFixture:Boolean(row.is_synthetic_fixture),
     };
   }

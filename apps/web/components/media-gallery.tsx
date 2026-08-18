@@ -1,11 +1,12 @@
 'use client';
 import {useState} from 'react';
 import {PortalImage} from './portal-image';
+import type {PublicMedia} from '../lib/public-api-contracts';
 
-export function MediaGallery({items}:{items:any[]}){
+export function MediaGallery({items}:{items:PublicMedia[]}){
  const [index,setIndex]=useState(0);
  if(!items?.length)return <div className="card gallery emptyMedia">Sem mídia pública</div>;
- const current=items[index];
+ const current=items[index]??items[0]!;
  return <div className="mediaGallery">
   <div className="card gallery"><PortalImage src={current.url}
     alt={current.alt??''} width={900} height={900} unoptimized/></div>

@@ -43,7 +43,8 @@ export class CommerceQuery {
              from commerce.price_observation x
             where x.listing_id=li.id order by observed_at desc limit 1
          ) po on true
-        where p.slug=$1 and li.status='ACTIVE' and s.status='ACTIVE'
+        where p.slug=$1 and p.lifecycle<>'UNKNOWN'
+          and li.status='ACTIVE' and s.status='ACTIVE'
         order by po.amount nulls last`,
       [slug],
     );

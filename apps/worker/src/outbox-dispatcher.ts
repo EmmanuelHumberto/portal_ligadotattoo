@@ -13,7 +13,7 @@ export class OutboxDispatcher {
     private readonly publisher: EventPublisher,
   ) {}
 
-  async dispatchBatch(limit = 50): Promise<number> {
+  async dispatchBatch(limit = 50,eventId?:string): Promise<number> {
     const client = await this.pool.connect();
     try {
       await client.query('BEGIN');
@@ -21,10 +21,11 @@ export class OutboxDispatcher {
         `select id,event_type,event_version,aggregate_type,aggregate_id,payload
            from ops.outbox_event
           where status='PENDING' and available_at <= now()
+            and ($2::uuid is null or id=$2)
           order by occurred_at
           for update skip locked
           limit $1`,
-        [limit],
+        [limit,eventId??null],
       );
 
       for (const row of selected.rows) {

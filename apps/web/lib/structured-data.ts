@@ -1,13 +1,15 @@
 import {absolute,SITE} from './site';
+import type {
+ EditorialContent,ProductDetail,PublicMedia,PublicOffer,
+} from './public-api-contracts';
 
-export function productJsonLd(p:any,offers:any[]=[]){
+export function productJsonLd(p:ProductDetail,offers:PublicOffer[]=[]){
  const validOffers=offers.filter(x=>Number.isFinite(Number(x.amount)));
  return compact({
   '@context':'https://schema.org','@type':'Product',
   name:p.name,description:p.summary??p.description,
   image:imagesOf(p),
   brand:p.brand?.name?{'@type':'Brand',name:p.brand.name}:undefined,
-  sku:p.sku??undefined,
   url:absolute(`/maquinas/${p.slug}`),
   offers:validOffers.length?validOffers.map(x=>({
    '@type':'Offer',price:String(x.amount),priceCurrency:x.currency,
@@ -17,7 +19,7 @@ export function productJsonLd(p:any,offers:any[]=[]){
   })):undefined,
  });
 }
-export function articleJsonLd(a:any){
+export function articleJsonLd(a:EditorialContent){
  return compact({
   '@context':'https://schema.org','@type':a.contentType==='NEWS'?'NewsArticle':'Article',
   headline:a.title,description:a.summary,datePublished:a.publishedAt,
@@ -27,7 +29,10 @@ export function articleJsonLd(a:any){
   publisher:{'@type':'Organization',name:SITE.name,url:SITE.url},
  });
 }
-export function eventJsonLd(e:any){
+export function eventJsonLd(e:EditorialContent&{
+ startsAt?:string;endsAt?:string|null;
+ location?:{name?:string|null;address:string}|null;
+}){
  return compact({
   '@context':'https://schema.org','@type':'Event',name:e.title,
   description:e.summary,startDate:e.startsAt,endDate:e.endsAt,
@@ -39,8 +44,8 @@ export function eventJsonLd(e:any){
   url:absolute(`/eventos/${e.slug}`),
  });
 }
-function imagesOf(a:any){
- const media=(a.media??[]).map((x:any)=>absolute(x.url));
+function imagesOf(a:{media?:PublicMedia[];coverUrl?:string|null}){
+ const media=(a.media??[]).map(x=>absolute(x.url));
  if(media.length)return media;
  return a.coverUrl?[absolute(a.coverUrl)]:undefined;
 }
@@ -49,10 +54,11 @@ function availability(x:string){
   x==='OUT_OF_STOCK'?'https://schema.org/OutOfStock':
   'https://schema.org/LimitedAvailability';
 }
-function compact(x:any):any{
+function compact(x:unknown):unknown{
  if(Array.isArray(x))return x.map(compact);
  if(x&&typeof x==='object')return Object.fromEntries(
-  Object.entries(x).filter(([,v])=>v!==undefined&&v!==null&&v!=='')
+  Object.entries(x as Record<string,unknown>)
+   .filter(([,v])=>v!==undefined&&v!==null&&v!=='')
    .map(([k,v])=>[k,compact(v)])
  );
  return x;

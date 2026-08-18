@@ -5,20 +5,24 @@ import {api,apiOrNull} from '../lib/api';
 import {articleJsonLd,eventJsonLd} from '../lib/structured-data';
 import {JsonLd} from './json-ld';
 import {SiteHeader} from './site-header';
+import type {
+ EditorialBody as EditorialDocument,EditorialEvent,EditorialPage,
+ EditorialContent,
+} from '../lib/public-api-contracts';
 
 export async function EditorialListing(props:{
  type:'NEWS'|'BLOG'|'EVENT';eyebrow:string;title:string;description:string;
  basePath:string;
 }){
  await connection();
- const data=await api(`/public/editorial?type=${props.type}`);
+ const data=await api<EditorialPage>(`/public/editorial?type=${props.type}`);
  return <><SiteHeader/><main className="shell discoveryPage">
   <header className="catalogHead"><div><p className="accent">{props.eyebrow}</p>
    <h1>{props.title}</h1><p className="muted">{props.description}</p></div>
    <span className="muted">{data.items?.length??0} publicações</span>
   </header>
   <section className="grid editorialListing">
-   {(data.items??[]).map((item:any)=><article className="card editorialItem"
+   {data.items.map(item=><article className="card editorialItem"
     key={item.id}><p className="accent">{label(item.contentType)}</p>
     {item.coverUrl&&<Link href={`${props.basePath}/${item.slug}`}>
      <img className="editorialCover" src={item.coverUrl} alt={item.title} loading="lazy"/></Link>}
@@ -37,7 +41,9 @@ export async function EditorialListing(props:{
 export async function EditorialDetail(props:{
  slug:string;type:'NEWS'|'BLOG'|'EVENT';basePath:string;
 }){
- const item=await apiOrNull(`/public/editorial/${encodeURIComponent(props.slug)}`);
+ const item=await apiOrNull<EditorialContent>(
+  `/public/editorial/${encodeURIComponent(props.slug)}`,
+ );
  if(!item||item.contentType!==props.type)notFound();
  return <><SiteHeader/><main className="shell editorialPage">
   <Link className="muted" href={props.basePath}>← Voltar</Link>
@@ -55,19 +61,19 @@ export async function EditorialDetail(props:{
  </main></>;
 }
 
-function EditorialBody({body}:{body:any}){
- return <div className="editorialBody">{(body?.blocks??[]).map((block:any,index:number)=>{
+function EditorialBody({body}:{body:EditorialDocument}){
+ return <div className="editorialBody">{body.blocks.map((block,index)=>{
   if(block.type==='image')return block.url?<img key={index} className="editorialImage" src={block.url} alt={block.caption??block.alt??'Imagem'} loading="lazy"/>:null;
   if(block.type==='heading')return block.level===3?<h3 key={index}>{block.text}</h3>:<h2 key={index}>{block.text}</h2>;
   if(block.type==='quote')return <blockquote key={index}>{block.text}</blockquote>;
   if(block.type==='callout')return <aside className="callout" key={index}>
    {block.title&&<strong>{block.title}</strong>}<p>{block.text}</p></aside>;
-  if(block.type==='steps')return <ol key={index}>{block.items?.map((x:any)=><li key={x.title}><b>{x.title}</b><p>{x.body}</p></li>)}</ol>;
+  if(block.type==='steps')return <ol key={index}>{block.items?.map(x=><li key={x.title}><b>{x.title}</b><p>{x.body}</p></li>)}</ol>;
   return block.type==='paragraph'?<p key={index}>{block.text}</p>:null;
  })}</div>;
 }
 
-function EventSummary({event}:{event:any}){
+function EventSummary({event}:{event:EditorialEvent}){
  return <dl className="eventSummary"><div><dt>Quando</dt><dd>{formatDate(event.startsAt)}</dd></div>
   <div><dt>Local</dt><dd>{[event.venueName,event.city,event.countryCode].filter(Boolean).join(' · ')}</dd></div>
   <div><dt>Status</dt><dd>{event.status}</dd></div></dl>;

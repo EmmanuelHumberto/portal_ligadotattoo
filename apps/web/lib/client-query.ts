@@ -1,4 +1,4 @@
-type Entry={expires:number,value:any};
+type Entry={expires:number,value:unknown};
 const cache=new Map<string,Entry>();
 
 export async function clientQuery<T>(

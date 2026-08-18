@@ -1,5 +1,6 @@
 import type {Metadata} from 'next';
 import {SITE,absolute} from './site';
+import type {EditorialContent} from './public-api-contracts';
 
 export function pageMetadata(input:{
  title:string;description:string;path:string;image?:string;
@@ -34,13 +35,16 @@ export function filteredCatalogMetadata(search:Record<string,unknown>):Metadata{
  });
 }
 
-export function editorialMetadata(item:any,type:'NEWS'|'BLOG'|'EVENT'):Metadata{
+export function editorialMetadata(
+ item:Pick<EditorialContent,'title'|'summary'|'slug'|'coverUrl'>,
+ type:'NEWS'|'BLOG'|'EVENT',
+):Metadata{
  const basePath=type==='NEWS'?'/noticias':type==='EVENT'?'/eventos':'/blog';
  return pageMetadata({
   title:item.title??'',
   description:item.summary??'',
   path:`${basePath}/${item.slug}`,
-  image:item.coverUrl,
+  image:item.coverUrl??undefined,
   type:'article',
  });
 }

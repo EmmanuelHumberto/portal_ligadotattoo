@@ -28,11 +28,19 @@ export class SimpleContentExtractor implements ContentExtractor {
       .filter(u=>!/(favicon|\.svg|\.gif|logo|brand|icon|tracking|pixel|ct\.pinterest|facebook\.com\/tr|google|profile|avatar|ie6countdown|warning|banner)/i.test(u))
       .map(u=>{try{return new URL(u,input.url).toString();}catch{return u;}});
     const price=extractPrice(raw);
-    return {title,text,links,structured:{
+    const blocked=looksBlocked(title,text);
+    return {title,text:blocked?'':text,links,structured:{
       sourceUrl:input.url,ogImage:ogImage?decodeEntities(ogImage):undefined,
       images,price:price?.amount,currency:price?.currency,
-    }};
+    },blocked};
   }
+}
+
+// Páginas anti-bot / desafio (Cloudflare, JSTOR, captcha etc.) não têm conteúdo
+// editorial útil. Detecta e descarta para não gerar candidatos/drafts de ruído.
+function looksBlocked(title:string|undefined,text:string):boolean{
+  const hay=((title ?? '')+' '+text);
+  return /(enable javascript|javascript is disabled|client challenge|just a moment|verify you are human|checking your browser|attention required|ddos protection|security check|complete the security check|enable cookies|unusual traffic|one more step|confirm you are not a robot)/i.test(hay);
 }
 
 function extractPrice(raw:string):{amount:number;currency:string}|null{

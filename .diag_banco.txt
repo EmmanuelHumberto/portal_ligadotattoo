@@ -1,0 +1,9 @@
+--- env do processo 9864 (banco) ---
+DATABASE_URL=postgres://portal:portal_dev@localhost:5433/portal
+PORT_API=3001
+POSTGRES_PORT=5432
+--- postgres container ---
+--- teste psql direto ---
+Error response from daemon: container ecb7b34751ca0e555e905e8674f72e67e9da8fcc5b238995b053c21755ef369d is not running
+--- porta 5433 no host ---
+5433 sem listener

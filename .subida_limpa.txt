@@ -1,0 +1,17 @@
+=== 1. subindo containers ===
+ Container infra-redis-1 Running 
+ Container infra-minio-1 Running 
+ Container infra-postgres-1 Recreate 
+ Container infra-postgres-1 Recreated 
+ Container infra-postgres-1 Starting 
+ Container infra-postgres-1 Started 
+infra-minio-1 Up 20 minutes
+infra-postgres-1 Up 8 seconds (healthy)
+infra-redis-1 Up 20 minutes
+=== pg_isready ===
+/var/run/postgresql:5432 - accepting connections
+=== 2. matando processos antigos do portal ===
+=== portas apos kill ===
+3000 e 3001 livres
+=== processos restantes ===
+nenhum processo do portal

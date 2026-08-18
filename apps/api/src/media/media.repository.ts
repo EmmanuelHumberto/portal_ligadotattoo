@@ -13,21 +13,4 @@ export class MediaRepository {
        a.rightsStatus,a.status,a.version],
     );
   }
-
-  async updateRights(
-    id:string, expectedVersion:number, rightsStatus:string, tx:Tx,
-  ) {
-    const r = await tx.query(
-      `update media.media_asset
-          set rights_status=$3,version=version+1,updated_at=now()
-        where id=$1 and version=$2
-        returning *`,
-      [id,expectedVersion,rightsStatus],
-    );
-    if (!r.rowCount)
-      throw Object.assign(new Error('Concurrent media modification'), {
-        name:'ConcurrentModificationError',
-      });
-    return r.rows[0];
-  }
 }

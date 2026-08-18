@@ -9,12 +9,13 @@ export async function setMediaRights(
 ):Promise<ActionResult>{
  const id=String(formData.get('id')??'').trim();
  const rightsStatus=String(formData.get('rightsStatus')??'').trim();
+ const basis=String(formData.get('basis')??'').trim();
  const expectedVersion=Number(formData.get('expectedVersion')??'');
- if(!id||!rightsStatus||!Number.isInteger(expectedVersion)||expectedVersion<1)
+ if(!id||!rightsStatus||!basis||!Number.isInteger(expectedVersion)||expectedVersion<1)
   return {ok:false,status:422};
 
  const result=await adminMutate(`/admin/media/${id}/rights`,{
-  method:'POST',body:{expectedVersion,rightsStatus},
+  method:'POST',body:{expectedVersion,rightsStatus,basis},
  });
  if(!result.ok)return {ok:false,status:result.status};
  revalidatePath('/admin/midia');

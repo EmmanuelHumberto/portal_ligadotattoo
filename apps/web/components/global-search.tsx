@@ -2,9 +2,12 @@
 import {useEffect,useRef,useState} from 'react';
 import Link from 'next/link';
 import {clientQuery} from '../lib/client-query';
+import type {SearchResult} from '../lib/public-api-contracts';
+
+type Suggestions={items:SearchResult[]};
 
 export function GlobalSearch(){
- const [q,setQ]=useState('');const [items,setItems]=useState<any[]>([]);
+ const [q,setQ]=useState('');const [items,setItems]=useState<SearchResult[]>([]);
  const [open,setOpen]=useState(false);const seq=useRef(0);
 
  useEffect(()=>{
@@ -12,9 +15,9 @@ export function GlobalSearch(){
   const id=++seq.current;
   const timer=setTimeout(async()=>{
    const key=`suggest:${q.trim().toLowerCase()}`;
-   const data=await clientQuery(key,()=>fetch(
+   const data=await clientQuery<Suggestions>(key,()=>fetch(
      `/api/search/suggest?q=${encodeURIComponent(q.trim())}`
-   ).then(r=>r.json()),20_000);
+   ).then(async r=>await r.json() as Suggestions),20_000);
    if(id===seq.current){setItems(data.items??[]);setOpen(true)}
   },180);
   return()=>clearTimeout(timer);

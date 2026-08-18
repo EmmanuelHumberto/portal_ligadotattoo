@@ -1,9 +1,10 @@
 import {
   createLocalJWKSet,exportJWK,generateKeyPair,SignJWT,
+  type JWTVerifyGetKey,
 } from 'jose';
 import {beforeAll,describe,expect,it} from 'vitest';
 import {
-  OidcAccessTokenVerifier,readOidcVerifierConfig,
+  createAccessTokenVerifier,OidcAccessTokenVerifier,readOidcVerifierConfig,
   type OidcVerifierConfig,
 } from '../src/iam/oidc-access-token.verifier';
 
@@ -16,15 +17,17 @@ describe('OidcAccessTokenVerifier',()=>{
   capabilitiesClaim:'capabilities',clockToleranceSeconds:0,
  };
  let privateKey:CryptoKey;
+ let keyResolver:JWTVerifyGetKey;
  let verifier:OidcAccessTokenVerifier;
 
  beforeAll(async()=>{
   const pair=await generateKeyPair('RS256');
   privateKey=pair.privateKey;
   const publicJwk=await exportJWK(pair.publicKey);
-  verifier=new OidcAccessTokenVerifier(
-   config,createLocalJWKSet({keys:[{...publicJwk,kid:'test-key',alg:'RS256'}]}),
-  );
+  keyResolver=createLocalJWKSet({
+   keys:[{...publicJwk,kid:'test-key',alg:'RS256'}],
+  });
+  verifier=new OidcAccessTokenVerifier(config,keyResolver);
  });
 
  it('validates signature and maps actor claims',async()=>{
@@ -34,6 +37,30 @@ describe('OidcAccessTokenVerifier',()=>{
   await expect(verifier.verify(token)).resolves.toEqual({
    sub:'subject-1',actorId:'admin-1',
    capabilities:['catalog:write','media:write'],authenticationLevel:'mfa',
+  });
+ });
+
+ it('grants full capabilities only to an explicitly configured email',async()=>{
+  const adminVerifier=new OidcAccessTokenVerifier({
+   ...config,fullAdminEmails:['admin@example.test'],
+  },keyResolver);
+  const token=await signedToken({
+   actor_id:'admin@example.test',email:'ADMIN@example.test',
+  });
+  const claims=await adminVerifier.verify(token);
+  expect(claims.capabilities).toContain('catalog.write');
+  expect(claims.capabilities).toContain('audit.read');
+ });
+
+ it('does not elevate an email outside the configured allowlist',async()=>{
+  const adminVerifier=new OidcAccessTokenVerifier({
+   ...config,fullAdminEmails:['admin@example.test'],
+  },keyResolver);
+  const token=await signedToken({
+   actor_id:'other@example.test',email:'other@example.test',
+  });
+  await expect(adminVerifier.verify(token)).resolves.toMatchObject({
+   actorId:'other@example.test',capabilities:[],
   });
  });
 
@@ -87,5 +114,37 @@ describe('readOidcVerifierConfig',()=>{
    OIDC_ISSUER:'http://issuer.test',OIDC_JWKS_URI:'https://issuer.test/jwks',
    OIDC_AUDIENCE:'portal-api',
   })).toThrow('HTTPS');
+ });
+
+ it('normalizes and validates the full-admin email allowlist',()=>{
+  const config=readOidcVerifierConfig({
+   OIDC_ISSUER:'https://issuer.test',
+   OIDC_JWKS_URI:'https://issuer.test/jwks',
+   OIDC_AUDIENCE:'portal-api',
+   OIDC_FULL_ADMIN_EMAILS:'ADMIN@example.test,admin@example.test',
+  });
+  expect(config?.fullAdminEmails).toEqual(['admin@example.test']);
+  expect(()=>readOidcVerifierConfig({
+   OIDC_ISSUER:'https://issuer.test',
+   OIDC_JWKS_URI:'https://issuer.test/jwks',
+   OIDC_AUDIENCE:'portal-api',OIDC_FULL_ADMIN_EMAILS:'not-an-email',
+  })).toThrow('invalid email');
+ });
+});
+
+describe('development access token',()=>{
+ it('accepts the local token only in development and test',async()=>{
+  const verifier=createAccessTokenVerifier({
+   NODE_ENV:'development',DEV_ADMIN_TOKEN:'local-secret',
+  });
+  await expect(verifier.verify('local-secret')).resolves.toMatchObject({
+   actorId:'dev-admin',authenticationLevel:'dev',
+  });
+ });
+
+ it('fails startup when a development token leaks into production',()=>{
+  expect(()=>createAccessTokenVerifier({
+   NODE_ENV:'production',DEV_ADMIN_TOKEN:'leaked-secret',
+  })).toThrow('only allowed in development or test');
  });
 });

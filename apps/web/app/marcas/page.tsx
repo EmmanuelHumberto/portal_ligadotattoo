@@ -3,16 +3,17 @@ import {connection} from 'next/server';
 import {SiteHeader} from '../../components/site-header';
 import {api} from '../../lib/api';
 import {pageMetadata} from '../../lib/seo';
+import type {ManufacturerPage} from '../../lib/public-api-contracts';
 
 export const metadata=pageMetadata({title:'Marcas',description:'Fabricantes e marcas de máquinas de tatuagem.',path:'/marcas'});
 
 export default async function Brands(){
  await connection();
- const data=await api('/public/manufacturers');
+ const data=await api<ManufacturerPage>('/public/manufacturers');
  return <><SiteHeader/><main className="shell discoveryPage">
   <header className="catalogHead"><div><p className="accent">FABRICANTES</p>
    <h1>Marcas e fabricantes</h1><p className="muted">Explore os fabricantes presentes no catálogo técnico.</p></div></header>
-  <section className="grid brandGrid">{(data.items??[]).map((brand:any)=><article
+  <section className="grid brandGrid">{data.items.map(brand=><article
    className="card brandCard" key={brand.id}>
    {brand.logoUrl
     ? <img className="brandLogo" src={brand.logoUrl} alt="" width={64} height={64}/>

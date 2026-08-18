@@ -4,7 +4,7 @@ info:
   version: 1.0.0
   description: Public and administrative HTTP contract for Portal Tattoo.
 servers:
-  - url: /api/v1
+  - url: /
 tags:
   - name: Public Catalog
   - name: Public Search
@@ -92,7 +92,7 @@ paths:
                 properties:
                   items:
                     type: array
-                    items: {type: string}
+                    items: {$ref: '#/components/schemas/SearchResult'}
   /public/editorial:
     get:
       tags: [Public Editorial]
@@ -157,6 +157,74 @@ paths:
             application/json:
               schema: {$ref: '#/components/schemas/PriceHistory'}
 
+  /public/products/facets:
+    get:
+      tags: [Public Catalog]
+      operationId: getPublicProductFacets
+      parameters:
+        - name: productType
+          in: query
+          schema: {type: string}
+        - name: manufacturer
+          in: query
+          schema: {type: string}
+      responses:
+        '200': {description: Product facets}
+  /public/products/compare:
+    get:
+      tags: [Public Catalog]
+      operationId: comparePublicProducts
+      parameters:
+        - name: ids
+          in: query
+          required: true
+          schema: {type: string}
+      responses:
+        '200': {description: Up to four products for comparison}
+  /public/manufacturers:
+    get:
+      tags: [Public Catalog]
+      operationId: listPublicManufacturers
+      responses:
+        '200': {description: Public manufacturers}
+  /public/manufacturers/{slug}:
+    get:
+      tags: [Public Catalog]
+      operationId: getPublicManufacturer
+      parameters:
+        - $ref: '#/components/parameters/Slug'
+      responses:
+        '200': {description: Public manufacturer detail}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /public/offers:
+    get:
+      tags: [Public Commerce]
+      operationId: listPublicOffers
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200': {description: Fresh public offers}
+  /public/offers/compare:
+    get:
+      tags: [Public Commerce]
+      operationId: comparePublicOffers
+      parameters:
+        - name: ids
+          in: query
+          required: true
+          schema: {type: string}
+      responses:
+        '200': {description: Offers selected for comparison}
+  /public/products/{slug}/offers-v2:
+    get:
+      tags: [Public Commerce]
+      operationId: getProductOffersV2
+      parameters:
+        - $ref: '#/components/parameters/Slug'
+      responses:
+        '200': {description: Current offers from the commerce projection}
+
   /admin/me:
     get:
       tags: [Admin Catalog]
@@ -170,19 +238,6 @@ paths:
               schema: {$ref: '#/components/schemas/AdminActor'}
         '401': {$ref: '#/components/responses/Unauthorized'}
   /admin/manufacturers:
-    get:
-      tags: [Admin Catalog]
-      security: [{oidc: []}]
-      operationId: listManufacturers
-      x-required-capability: catalog.read
-      responses:
-        '200':
-          description: Manufacturers
-          content:
-            application/json:
-              schema:
-                type: array
-                items: {$ref: '#/components/schemas/Manufacturer'}
     post:
       tags: [Admin Catalog]
       security: [{oidc: []}]
@@ -259,7 +314,6 @@ paths:
       x-required-capability: catalog.write
       parameters:
         - $ref: '#/components/parameters/Id'
-        - $ref: '#/components/parameters/IfMatch'
       requestBody:
         required: true
         content:
@@ -273,8 +327,79 @@ paths:
               schema: {$ref: '#/components/schemas/AdminProduct'}
         '409': {$ref: '#/components/responses/ConcurrentModification'}
         '422': {$ref: '#/components/responses/Validation'}
+  /admin/products/{id}/image:
+    post:
+      tags: [Admin Catalog]
+      security: [{oidc: []}]
+      operationId: attachProductImage
+      x-required-capability: catalog.write
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: {type: string, format: binary}
+      responses:
+        '201': {description: Image uploaded, permitted and linked}
+  /admin/products/{id}/specs:
+    post:
+      tags: [Admin Catalog]
+      security: [{oidc: []}]
+      operationId: replaceProductSpecifications
+      x-required-capability: catalog.write
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '201': {description: Canonical specifications updated}
+  /admin/products/{id}/type:
+    patch:
+      tags: [Admin Catalog]
+      security: [{oidc: []}]
+      operationId: changeProductType
+      x-required-capability: catalog.write
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200': {description: Product type and canonical fact updated}
+  /admin/products/{id}/meta:
+    patch:
+      tags: [Admin Catalog]
+      security: [{oidc: []}]
+      operationId: updateProductMetadata
+      x-required-capability: catalog.write
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200': {description: Product metadata updated}
+  /admin/products/discovery/run:
+    post:
+      tags: [Admin Catalog]
+      security: [{oidc: []}]
+      operationId: runCatalogDiscovery
+      x-required-capability: catalog.write
+      responses:
+        '201': {description: Discovery job enqueued or deduplicated}
 
   /admin/claims:
+    get:
+      tags: [Admin Knowledge]
+      security: [{oidc: []}]
+      operationId: listAdminClaims
+      x-required-capability: claim.read
+      parameters:
+        - name: status
+          in: query
+          schema: {type: string}
+        - name: subjectId
+          in: query
+          schema: {$ref: '#/components/schemas/Uuid'}
+      responses:
+        '200': {description: Claims matching the filters}
     post:
       tags: [Admin Knowledge]
       security: [{oidc: []}]
@@ -310,6 +435,17 @@ paths:
               schema: {$ref: '#/components/schemas/Claim'}
         '404': {$ref: '#/components/responses/NotFound'}
   /admin/canonical-proposals:
+    get:
+      tags: [Admin Knowledge]
+      security: [{oidc: []}]
+      operationId: listCanonicalProposals
+      x-required-capability: canonical.propose
+      parameters:
+        - name: status
+          in: query
+          schema: {type: string, default: PENDING}
+      responses:
+        '200': {description: Canonical proposals matching the status}
     post:
       tags: [Admin Knowledge]
       security: [{oidc: []}]
@@ -326,6 +462,17 @@ paths:
           content:
             application/json:
               schema: {$ref: '#/components/schemas/CanonicalProposal'}
+  /admin/canonical-proposals/{id}:
+    get:
+      tags: [Admin Knowledge]
+      security: [{oidc: []}]
+      operationId: getCanonicalProposal
+      x-required-capability: canonical.propose
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200': {description: Canonical proposal detail}
+        '404': {$ref: '#/components/responses/NotFound'}
   /admin/canonical-proposals/{id}/decision:
     post:
       tags: [Admin Knowledge]
@@ -350,6 +497,20 @@ paths:
         '422': {$ref: '#/components/responses/Validation'}
 
   /admin/media:
+    get:
+      tags: [Admin Media]
+      security: [{oidc: []}]
+      operationId: listAdminMedia
+      x-required-capability: media.read
+      parameters:
+        - name: status
+          in: query
+          schema: {type: string}
+        - name: rights
+          in: query
+          schema: {$ref: '#/components/schemas/MediaRightsStatus'}
+      responses:
+        '200': {description: Media assets matching the filters}
     post:
       tags: [Admin Media]
       security: [{oidc: []}]
@@ -381,15 +542,27 @@ paths:
           application/json:
             schema:
               type: object
-              required: [rightsStatus, reason]
+              required: [rightsStatus, expectedVersion]
               properties:
                 rightsStatus: {$ref: '#/components/schemas/MediaRightsStatus'}
-                reason: {type: string, minLength: 3}
+                expectedVersion: {type: integer, minimum: 1}
+                basis: {type: string, minLength: 1}
+                licenseName: {type: string}
+                sourceUrl: {type: string, format: uri}
+                expiresAt: {type: string, format: date-time}
+                notes: {type: string}
       responses:
         '200': {description: Rights status updated}
         '409': {$ref: '#/components/responses/ConcurrentModification'}
 
   /admin/sources:
+    get:
+      tags: [Admin Sources]
+      security: [{oidc: []}]
+      operationId: listSources
+      x-required-capability: source.read
+      responses:
+        '200': {description: Registered ingestion sources}
     post:
       tags: [Admin Sources]
       security: [{oidc: []}]
@@ -406,31 +579,42 @@ paths:
           content:
             application/json:
               schema: {$ref: '#/components/schemas/Source'}
-  /admin/ingestion/acquisitions:
+  /admin/ingestion/run:
     post:
       tags: [Admin Ingestion]
       security: [{oidc: []}]
-      operationId: triggerAcquisition
-      x-required-capability: ingestion.operate
+      operationId: runIngestionTargets
+      x-required-capability: source.write
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [crawlTargetId]
-              properties:
-                crawlTargetId: {$ref: '#/components/schemas/Uuid'}
+        - name: kind
+          in: query
+          schema: {type: string}
       responses:
-        '202':
-          description: Acquisition scheduled
+        '201':
+          description: Eligible targets enqueued
           content:
             application/json:
-              schema: {$ref: '#/components/schemas/AcceptedJob'}
+              schema:
+                type: object
+                required: [enqueued]
+                properties:
+                  enqueued: {type: integer, minimum: 0}
 
   /admin/editorial:
+    get:
+      tags: [Admin Editorial]
+      security: [{oidc: []}]
+      operationId: listAdminEditorial
+      x-required-capability: editorial.read
+      parameters:
+        - name: status
+          in: query
+          schema: {type: string}
+        - name: type
+          in: query
+          schema: {$ref: '#/components/schemas/EditorialType'}
+      responses:
+        '200': {description: Editorial content matching the filters}
     post:
       tags: [Admin Editorial]
       security: [{oidc: []}]
@@ -461,6 +645,21 @@ paths:
           content:
             application/json:
               schema: {$ref: '#/components/schemas/AdminEditorialContent'}
+        '404': {$ref: '#/components/responses/NotFound'}
+    patch:
+      tags: [Admin Editorial]
+      security: [{oidc: []}]
+      operationId: updateEditorialDraft
+      x-required-capability: editorial.write
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object, additionalProperties: true}
+      responses:
+        '200': {description: Editorial draft updated}
         '404': {$ref: '#/components/responses/NotFound'}
     delete:
       tags: [Admin Editorial]
@@ -530,43 +729,475 @@ paths:
             application/json:
               schema: {$ref: '#/components/schemas/PriceObservation'}
 
-  /admin/ai/providers:
+  /admin/ai/registry:
     get:
       tags: [Admin AI]
       security: [{oidc: []}]
-      operationId: listAIProviders
-      x-required-capability: ai.configure
+      operationId: getAIRegistry
+      x-required-capability: ai.config.read
       responses:
         '200':
-          description: Configured providers without secrets
+          description: Providers, models and workload policies without secrets
           content:
             application/json:
-              schema:
-                type: array
-                items: {$ref: '#/components/schemas/AIProvider'}
-  /admin/ai/routing-policies:
-    post:
+              schema: {type: object, additionalProperties: true}
+  /admin/ai/executions:
+    get:
       tags: [Admin AI]
       security: [{oidc: []}]
-      operationId: createAIRoutingPolicy
-      x-required-capability: ai.configure
+      operationId: listAIExecutions
+      x-required-capability: ai.execution.read
+      responses:
+        '200':
+          description: Recent AI executions, individual provider attempts and workload budgets
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AIExecutionLedger'}
+
+  /admin/audit:
+    get:
+      tags: [Admin Operations]
+      security: [{oidc: []}]
+      operationId: listAuditEvents
+      x-required-capability: audit.read
+      parameters:
+        - {name: actorId, in: query, schema: {type: string}}
+        - {name: action, in: query, schema: {type: string}}
+        - {name: subjectType, in: query, schema: {type: string}}
+        - {name: subjectId, in: query, schema: {type: string}}
+        - {name: from, in: query, schema: {type: string, format: date-time}}
+        - {name: to, in: query, schema: {type: string, format: date-time}}
+      responses:
+        '200': {description: Audit events matching the filters}
+  /admin/audit/{id}:
+    get:
+      tags: [Admin Operations]
+      security: [{oidc: []}]
+      operationId: getAuditEvent
+      x-required-capability: audit.read
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      responses:
+        '200': {description: Audit event detail}
+        '404': {$ref: '#/components/responses/NotFound'}
+
+  /admin/editorial/candidates:
+    get:
+      tags: [Admin Editorial]
+      security: [{oidc: []}]
+      operationId: listEditorialCandidates
+      x-required-capability: editorial.read
+      parameters:
+        - {name: status, in: query, schema: {type: string}}
+      responses:
+        '200': {description: Story candidates matching the status}
+  /admin/editorial/ingest-social:
+    post:
+      tags: [Admin Editorial]
+      security: [{oidc: []}]
+      operationId: ingestSocialEditorialCandidate
+      x-required-capability: editorial.write
+      requestBody:
+        required: true
+        content: {application/json: {schema: {type: object, additionalProperties: true}}}
+      responses:
+        '201': {description: Social candidate ingested}
+  /admin/editorial/ai-draft:
+    post:
+      tags: [Admin Editorial]
+      security: [{oidc: []}]
+      operationId: createEditorialAIDraft
+      x-required-capability: editorial.write
+      requestBody:
+        required: true
+        content: {application/json: {schema: {type: object, additionalProperties: true}}}
+      responses:
+        '201': {description: AI draft generated under the configured workload policy}
+  /admin/editorial/{id}/submit:
+    post:
+      tags: [Admin Editorial]
+      security: [{oidc: []}]
+      operationId: submitEditorial
+      x-required-capability: editorial.write
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      responses:
+        '201': {description: Editorial content submitted for review}
+  /admin/editorial/{id}/approve:
+    post:
+      tags: [Admin Editorial]
+      security: [{oidc: []}]
+      operationId: approveEditorial
+      x-required-capability: editorial.approve
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      responses:
+        '201': {description: Editorial content approved}
+  /admin/editorial/{id}/schedule:
+    post:
+      tags: [Admin Editorial]
+      security: [{oidc: []}]
+      operationId: scheduleEditorial
+      x-required-capability: editorial.publish
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {type: object, additionalProperties: true}}}
+      responses:
+        '201': {description: Editorial publication scheduled}
+
+  /admin/editorial-config/auto-draft:
+    get:
+      tags: [Admin Editorial]
+      security: [{oidc: []}]
+      operationId: getEditorialAutoDraftConfig
+      x-required-capability: editorial.read
+      responses:
+        '200': {description: Automatic draft configuration}
+    put:
+      tags: [Admin Editorial]
+      security: [{oidc: []}]
+      operationId: setEditorialAutoDraftConfig
+      x-required-capability: editorial.write
       requestBody:
         required: true
         content:
           application/json:
-            schema: {$ref: '#/components/schemas/CreateAIRoutingPolicyRequest'}
+            schema:
+              type: object
+              required: [enabled]
+              properties: {enabled: {type: boolean}}
       responses:
-        '201':
-          description: Routing policy created
-          content:
-            application/json:
-              schema: {$ref: '#/components/schemas/AIRoutingPolicy'}
+        '200': {description: Automatic draft configuration updated}
+  /admin/editorial-config/auto-draft/run:
+    post:
+      tags: [Admin Editorial]
+      security: [{oidc: []}]
+      operationId: runEditorialAutoDraft
+      x-required-capability: editorial.write
+      responses:
+        '201': {description: Eligible automatic draft jobs enqueued}
+
+  /admin/editorial-topics:
+    get:
+      tags: [Admin Editorial]
+      security: [{oidc: []}]
+      operationId: listEditorialTopics
+      x-required-capability: editorial.read
+      responses:
+        '200': {description: Editorial discovery topics}
+    post:
+      tags: [Admin Editorial]
+      security: [{oidc: []}]
+      operationId: createEditorialTopic
+      x-required-capability: editorial.write
+      requestBody:
+        required: true
+        content: {application/json: {schema: {type: object, additionalProperties: false}}}
+      responses:
+        '201': {description: Editorial topic created}
+  /admin/editorial-topics/run:
+    post:
+      tags: [Admin Editorial]
+      security: [{oidc: []}]
+      operationId: runEditorialTopicDiscovery
+      x-required-capability: editorial.write
+      responses:
+        '201': {description: Topic discovery job enqueued or deduplicated}
+  /admin/editorial-topics/{id}/status:
+    put:
+      tags: [Admin Editorial]
+      security: [{oidc: []}]
+      operationId: setEditorialTopicStatus
+      x-required-capability: editorial.write
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties: {status: {type: string, enum: [ACTIVE, PAUSED]}}
+      responses:
+        '200': {description: Editorial topic status updated}
+
+  /admin/ingestion/runs:
+    get:
+      tags: [Admin Ingestion]
+      security: [{oidc: []}]
+      operationId: listIngestionRuns
+      x-required-capability: ingestion.read
+      parameters:
+        - {name: sourceId, in: query, schema: {type: string, format: uuid}}
+        - {name: status, in: query, schema: {type: string}}
+      responses:
+        '200': {description: Ingestion runs matching the filters}
+  /admin/ingestion/discoveries:
+    get:
+      tags: [Admin Ingestion]
+      security: [{oidc: []}]
+      operationId: listIngestionDiscoveries
+      x-required-capability: ingestion.read
+      parameters:
+        - {name: status, in: query, schema: {type: string, default: NEW}}
+      responses:
+        '200': {description: Ingestion discoveries matching the status}
+  /admin/crawl-targets:
+    get:
+      tags: [Admin Sources]
+      security: [{oidc: []}]
+      operationId: listCrawlTargets
+      x-required-capability: source.read
+      responses:
+        '200': {description: Configured crawl targets}
+    post:
+      tags: [Admin Sources]
+      security: [{oidc: []}]
+      operationId: createCrawlTarget
+      x-required-capability: source.write
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CreateCrawlTargetRequest'}
+      responses:
+        '201': {description: Crawl target created}
+
+  /admin/intelligence/overview:
+    get:
+      tags: [Admin Analytics]
+      security: [{oidc: []}]
+      operationId: getIntelligenceOverview
+      x-required-capability: analytics.read
+      parameters:
+        - {name: days, in: query, schema: {type: integer, minimum: 1, maximum: 365, default: 30}}
+      responses:
+        '200': {description: Discovery, search and quality overview}
+  /admin/intelligence/content-opportunities:
+    get:
+      tags: [Admin Analytics]
+      security: [{oidc: []}]
+      operationId: listContentOpportunities
+      x-required-capability: analytics.read
+      responses:
+        '200': {description: Content opportunities derived from quality signals}
+  /admin/laboratory/sessions:
+    get:
+      tags: [Admin Laboratory]
+      security: [{oidc: []}]
+      operationId: listLaboratorySessions
+      x-required-capability: laboratory.read
+      responses:
+        '200': {description: Laboratory sessions}
+
+  /admin/listings:
+    get:
+      tags: [Admin Commerce]
+      security: [{oidc: []}]
+      operationId: listAdminListings
+      x-required-capability: commerce.read
+      parameters:
+        - {name: status, in: query, schema: {type: string}}
+        - {name: sellerId, in: query, schema: {type: string, format: uuid}}
+      responses:
+        '200': {description: Commerce listings matching the filters}
+  /admin/listings/{id}/url:
+    post:
+      tags: [Admin Commerce]
+      security: [{oidc: []}]
+      operationId: setListingUrl
+      x-required-capability: commerce.manage
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [url]
+              properties: {url: {type: string, format: uri}}
+      responses:
+        '200': {description: Listing URL updated}
+        '404': {$ref: '#/components/responses/NotFound'}
+
+  /admin/media/review-queue:
+    get:
+      tags: [Admin Media]
+      security: [{oidc: []}]
+      operationId: getMediaReviewQueue
+      x-required-capability: media.review
+      responses:
+        '200': {description: Media awaiting rights review}
+  /admin/media/upload:
+    post:
+      tags: [Admin Media]
+      security: [{oidc: []}]
+      operationId: uploadMedia
+      x-required-capability: media.review
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties: {file: {type: string, format: binary}}
+      responses:
+        '201': {description: Media uploaded and registered}
+  /admin/media/{id}/url:
+    get:
+      tags: [Admin Media]
+      security: [{oidc: []}]
+      operationId: getAdminMediaUrl
+      x-required-capability: media.read
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      responses:
+        '200': {description: Temporary media URL}
+  /public/media/{subjectType}/{subjectId}:
+    get:
+      tags: [Public Catalog]
+      operationId: listPublicSubjectMedia
+      parameters:
+        - {name: subjectType, in: path, required: true, schema: {type: string}}
+        - {name: subjectId, in: path, required: true, schema: {type: string, format: uuid}}
+      responses:
+        '200': {description: Permitted public media associated with the subject}
+
+  /admin/operations/dashboard:
+    get:
+      tags: [Admin Operations]
+      security: [{oidc: []}]
+      operationId: getOperationsDashboard
+      x-required-capability: operations.read
+      responses: {'200': {description: Operational dashboard}}
+  /admin/operations/jobs:
+    get:
+      tags: [Admin Operations]
+      security: [{oidc: []}]
+      operationId: listOperationsJobs
+      x-required-capability: operations.read
+      parameters: [{name: status, in: query, schema: {type: string}}]
+      responses: {'200': {description: Background jobs}}
+  /admin/operations/outbox:
+    get:
+      tags: [Admin Operations]
+      security: [{oidc: []}]
+      operationId: listOperationsOutbox
+      x-required-capability: operations.read
+      parameters: [{name: status, in: query, schema: {type: string}}]
+      responses: {'200': {description: Outbox events}}
+  /admin/operations/dead-letters:
+    get:
+      tags: [Admin Operations]
+      security: [{oidc: []}]
+      operationId: listDeadLetters
+      x-required-capability: operations.read
+      responses: {'200': {description: Dead-lettered jobs and events}}
+  /admin/operations/cache-invalidations:
+    get:
+      tags: [Admin Operations]
+      security: [{oidc: []}]
+      operationId: listCacheInvalidations
+      x-required-capability: operations.read
+      responses: {'200': {description: Cache invalidation events}}
+  /admin/operations/readiness:
+    get:
+      tags: [Admin Operations]
+      security: [{oidc: []}]
+      operationId: getOperationsReadiness
+      x-required-capability: operations.read
+      responses: {'200': {description: Detailed operational readiness}}
+
+  /admin/technical-issues:
+    get:
+      tags: [Admin Operations]
+      security: [{oidc: []}]
+      operationId: listTechnicalIssues
+      x-required-capability: service.read
+      responses: {'200': {description: Known technical issues}}
+  /analytics/events:
+    post:
+      tags: [Public Analytics]
+      operationId: recordAnalyticsEvent
+      requestBody:
+        required: true
+        content: {application/json: {schema: {type: object, additionalProperties: true}}}
+      responses:
+        '201': {description: Event accepted}
+  /go/listing/{id}:
+    get:
+      tags: [Public Commerce]
+      operationId: followListing
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      responses:
+        '302': {description: Redirect to the listing with no referrer}
+        '404': {$ref: '#/components/responses/NotFound'}
+
+  /health/live:
+    get:
+      tags: [Health]
+      operationId: getLiveness
+      responses: {'200': {description: API process is live}}
+  /health/ready:
+    get:
+      tags: [Health]
+      operationId: getReadiness
+      responses:
+        '200': {description: API and portal database are ready}
+        '503': {description: Portal database is unavailable}
+  /livez:
+    get:
+      tags: [Health]
+      operationId: getLegacyLiveness
+      responses: {'200': {description: API process is live}}
+  /readyz:
+    get:
+      tags: [Health]
+      operationId: getLegacyReadiness
+      responses:
+        '200': {description: Portal database is ready}
+        '503': {description: Portal database is unavailable}
+  /system/architecture:
+    get:
+      tags: [Health]
+      operationId: getSystemArchitecture
+      responses: {'200': {description: Deployed architecture identifier and service topology}}
+
+  /internal/catalog/translate-description:
+    post:
+      tags: [Internal]
+      security: [{internalKey: []}]
+      operationId: translateCatalogDescription
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [proposalId]
+              properties: {proposalId: {type: string, format: uuid}}
+      responses:
+        '201': {description: Translation proposal generated through the AI Provider Hub}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+  /internal/editorial/auto-draft:
+    post:
+      tags: [Internal]
+      security: [{internalKey: []}]
+      operationId: generateInternalEditorialDraft
+      requestBody:
+        required: true
+        content: {application/json: {schema: {type: object, additionalProperties: true}}}
+      responses:
+        '201': {description: Editorial draft generated through the AI Provider Hub}
+        '401': {$ref: '#/components/responses/Unauthorized'}
 
 components:
   securitySchemes:
     oidc:
       type: openIdConnect
       openIdConnectUrl: https://identity.example.invalid/.well-known/openid-configuration
+    internalKey:
+      type: apiKey
+      in: header
+      name: x-internal-key
   parameters:
     Id:
       name: id
@@ -617,6 +1248,56 @@ components:
     Uuid:
       type: string
       format: uuid
+    AIExecutionLedger:
+      type: object
+      required: [items,attempts,budgets]
+      properties:
+        items:
+          type: array
+          items: {$ref: '#/components/schemas/AIExecution'}
+        attempts:
+          type: array
+          items: {$ref: '#/components/schemas/AIExecutionAttempt'}
+        budgets:
+          type: array
+          items: {$ref: '#/components/schemas/AIWorkloadBudget'}
+    AIExecution:
+      type: object
+      required: [id,workload_key,status,attempt_count,estimated_cost_usd,created_at]
+      additionalProperties: true
+      properties:
+        id: {$ref: '#/components/schemas/Uuid'}
+        workload_key: {type: string}
+        provider_key: {type: [string,'null']}
+        model_key: {type: [string,'null']}
+        status: {type: string, enum: [RUNNING,SUCCEEDED,FAILED]}
+        attempt_count: {type: integer, minimum: 0}
+        estimated_cost_usd: {type: [number,string]}
+        created_at: {type: string, format: date-time}
+    AIExecutionAttempt:
+      type: object
+      required: [id,execution_id,attempt_no,provider_key,model_key,status,reserved_cost_usd,created_at]
+      additionalProperties: true
+      properties:
+        id: {$ref: '#/components/schemas/Uuid'}
+        execution_id: {$ref: '#/components/schemas/Uuid'}
+        attempt_no: {type: integer, minimum: 1}
+        provider_key: {type: string}
+        model_key: {type: string}
+        status: {type: string, enum: [RUNNING,SUCCEEDED,FAILED]}
+        reserved_cost_usd: {type: [number,string]}
+        estimated_cost_usd: {type: [number,string,'null']}
+        error_code: {type: [string,'null']}
+        created_at: {type: string, format: date-time}
+    AIWorkloadBudget:
+      type: object
+      required: [workload_key,day_cost_usd,month_cost_usd]
+      properties:
+        workload_key: {type: string}
+        day_cost_usd: {type: [number,string]}
+        month_cost_usd: {type: [number,string]}
+        daily_budget_usd: {type: [number,string,'null']}
+        monthly_budget_usd: {type: [number,string,'null']}
     Problem:
       type: object
       required: [type,title,status,code,correlationId]
@@ -705,28 +1386,65 @@ components:
             claimsSummary: {type: object, additionalProperties: true}
             canonicalFacts: {type: array, items: {$ref: '#/components/schemas/CanonicalFact'}}
             media: {type: array, items: {$ref: '#/components/schemas/MediaAsset'}}
-    PublicProduct:
+    PublicProductSummary:
       type: object
-      required: [id,slug,name,manufacturer,productType,canonicalSpecifications]
+      required: [id,slug,name,manufacturer,manufacturerSlug,brand,type,productType,typeLabel,lifecycle]
       properties:
         id: {$ref: '#/components/schemas/Uuid'}
         slug: {type: string}
         name: {type: string}
         manufacturer: {type: string}
-        brand: {type: [string,'null']}
+        manufacturerSlug: {type: string}
+        brand:
+          type: object
+          required: [name]
+          properties:
+            name: {type: string}
+        type: {type: string}
         productType: {type: string}
+        typeLabel: {type: string}
         lifecycle: {type: string}
-        heroMedia: {$ref: '#/components/schemas/PublicMedia'}
-        canonicalSpecifications:
-          type: array
-          items: {$ref: '#/components/schemas/PublicSpecification'}
-        offersSummary: {type: object, additionalProperties: true}
-        priceHistorySummary: {type: object, additionalProperties: true}
+        heroMedia:
+          oneOf:
+            - {$ref: '#/components/schemas/PublicMedia'}
+            - {type: 'null'}
+        offerFrom:
+          oneOf:
+            - type: object
+              required: [amount,currency]
+              properties:
+                amount: {type: number}
+                currency: {type: string}
+            - {type: 'null'}
+    PublicProduct:
+      allOf:
+        - {$ref: '#/components/schemas/PublicProductSummary'}
+        - type: object
+          required: [machineType,machineTypeLabel,canonicalSpecifications,specifications,media,documents,isSyntheticFixture]
+          properties:
+            machineType: {type: string}
+            machineTypeLabel: {type: string}
+            summary: {type: [string,'null']}
+            description: {type: [string,'null']}
+            canonicalSpecifications:
+              type: array
+              items: {$ref: '#/components/schemas/PublicSpecification'}
+            specifications:
+              type: array
+              items: {$ref: '#/components/schemas/FormattedSpecification'}
+            media:
+              type: array
+              items: {$ref: '#/components/schemas/PublicMedia'}
+            documents:
+              type: array
+              items: {$ref: '#/components/schemas/PublicDocument'}
+            offersSummary: {type: [object,'null'], additionalProperties: true}
+            isSyntheticFixture: {type: boolean}
     PublicProductPage:
       type: object
       required: [items,meta]
       properties:
-        items: {type: array, items: {$ref: '#/components/schemas/PublicProduct'}}
+        items: {type: array, items: {$ref: '#/components/schemas/PublicProductSummary'}}
         meta: {$ref: '#/components/schemas/PageMeta'}
     PublicSpecification:
       type: object
@@ -736,6 +1454,22 @@ components:
         name: {type: string}
         value: {}
         unit: {type: [string,'null']}
+    FormattedSpecification:
+      type: object
+      required: [key,label,value]
+      properties:
+        key: {type: string}
+        label: {type: string}
+        value: {type: string}
+    PublicDocument:
+      type: object
+      required: [id,title,url,mimeType,byteSize]
+      properties:
+        id: {$ref: '#/components/schemas/Uuid'}
+        title: {type: string}
+        url: {type: string}
+        mimeType: {type: string}
+        byteSize: {type: integer, minimum: 0}
     PublicMedia:
       type: object
       required: [url,kind]
@@ -749,16 +1483,17 @@ components:
       properties:
         items:
           type: array
-          items:
-            type: object
-            required: [type,id,title,url]
-            properties:
-              type: {type: string}
-              id: {$ref: '#/components/schemas/Uuid'}
-              title: {type: string}
-              subtitle: {type: [string,'null']}
-              url: {type: string}
+          items: {$ref: '#/components/schemas/SearchResult'}
         meta: {$ref: '#/components/schemas/PageMeta'}
+    SearchResult:
+      type: object
+      required: [type,id,title,url]
+      properties:
+        type: {type: string}
+        id: {$ref: '#/components/schemas/Uuid'}
+        title: {type: string}
+        subtitle: {type: [string,'null']}
+        url: {type: string}
     RecordClaimRequest:
       type: object
       required: [subjectType,subjectId,propertyKey,value,claimantType]
@@ -840,7 +1575,16 @@ components:
         mimeType: {type: string}
         byteSize: {type: integer, minimum: 0}
         sha256: {type: string}
-        sourceUrl: {type: string, format: uri}
+    CreateCrawlTargetRequest:
+      type: object
+      required: [sourceId,url]
+      additionalProperties: false
+      properties:
+        sourceId: {$ref: '#/components/schemas/Uuid'}
+        url: {type: string, format: uri}
+        discoveryMode: {type: string, enum: [EDITORIAL,CATALOG,MIXED,SNAPSHOT_ONLY], default: EDITORIAL}
+        scheduleKey: {type: string, maxLength: 80}
+        maxBytes: {type: integer, minimum: 1024, maximum: 26214400, default: 5000000}
     MediaAsset:
       type: object
       required: [id,kind,mimeType,rightsStatus,status,version]
@@ -853,11 +1597,15 @@ components:
         version: {type: integer}
     RegisterSourceRequest:
       type: object
-      required: [name,sourceType]
+      required: [name,kind,baseUrl]
+      additionalProperties: false
       properties:
         name: {type: string}
-        sourceType: {type: string}
+        kind: {type: string, enum: [MANUFACTURER,RETAILER,NEWS,EVENT,TECHNICAL,OTHER,SOCIAL]}
         baseUrl: {type: string, format: uri}
+        allowedHosts: {type: array, maxItems: 100, items: {type: string}}
+        robotsPolicy: {type: string, enum: [RESPECT,MANUAL_ALLOW,DISABLED]}
+        crawlDelayMs: {type: integer, minimum: 250, maximum: 3600000}
     Source:
       type: object
       required: [id,name,lifecycle,complianceStatus,version]
@@ -914,14 +1662,14 @@ components:
         meta: {$ref: '#/components/schemas/PageMeta'}
     RecordPriceRequest:
       type: object
-      required: [amount,currency,observedAt]
+      required: [amount,currency]
       properties:
         amount: {type: number, minimum: 0}
         currency: {type: string, minLength: 3, maxLength: 3}
-        availability: {type: string}
+        availability: {type: string, enum: [IN_STOCK,OUT_OF_STOCK,PREORDER,UNAVAILABLE,UNKNOWN]}
         shippingAmount: {type: number, minimum: 0}
         observedAt: {type: string, format: date-time}
-        snapshotId: {$ref: '#/components/schemas/Uuid'}
+        sourceSnapshotId: {$ref: '#/components/schemas/Uuid'}
     PriceObservation:
       type: object
       required: [id,amount,currency,observedAt]

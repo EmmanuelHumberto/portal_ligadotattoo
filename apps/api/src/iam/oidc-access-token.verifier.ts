@@ -19,6 +19,7 @@ export type OidcVerifierConfig={
   actorIdClaim:string;
   capabilitiesClaim:string;
   clockToleranceSeconds:number;
+  fullAdminEmails?:string[];
 };
 
 export class OidcAccessTokenVerifier implements AccessTokenVerifier {
@@ -46,16 +47,24 @@ export class OidcAccessTokenVerifier implements AccessTokenVerifier {
 
     const actorId=stringClaim(payload,this.config.actorIdClaim);
     if(!actorId)throw new Error(`Missing OIDC claim: ${this.config.actorIdClaim}`);
+    const tokenCapabilities=capabilitiesClaim(
+      payload,this.config.capabilitiesClaim,
+    );
+    const email=stringClaim(payload,'email')?.toLowerCase();
+    const fullAdmin=(this.config.fullAdminEmails??[])
+      .some(candidate=>candidate.toLowerCase()===email);
     return {
       sub:payload.sub as string,
       actorId,
-      capabilities:capabilitiesClaim(payload,this.config.capabilitiesClaim),
+      capabilities:[...new Set([
+        ...tokenCapabilities,...(fullAdmin?FULL_ADMIN_CAPABILITIES:[]),
+      ])],
       authenticationLevel:stringClaim(payload,'acr') ?? 'oidc',
     };
   }
 }
 
-const DEV_CAPABILITIES=[
+const FULL_ADMIN_CAPABILITIES=[
   'catalog.read','catalog.write',
   'editorial.read','editorial.write','editorial.approve','editorial.publish',
   'source.read','source.write','ingestion.read',
@@ -73,9 +82,12 @@ const DEV_CAPABILITIES=[
 export function createAccessTokenVerifier(
   env:NodeJS.ProcessEnv,
 ):AccessTokenVerifier {
+  const devToken=env.DEV_ADMIN_TOKEN?.trim();
+  if(devToken&&!developmentAuthAllowed(env.NODE_ENV))
+    throw new Error('DEV_ADMIN_TOKEN is only allowed in development or test');
+
   const config=readOidcVerifierConfig(env);
   if(!config){
-    const devToken=env.DEV_ADMIN_TOKEN?.trim();
     if(devToken){
       return {
         async verify(token:string) {
@@ -83,7 +95,7 @@ export function createAccessTokenVerifier(
           return {
             sub:'dev-admin',
             actorId:'dev-admin',
-            capabilities:DEV_CAPABILITIES,
+            capabilities:FULL_ADMIN_CAPABILITIES,
             authenticationLevel:'dev',
           };
         },
@@ -96,6 +108,10 @@ export function createAccessTokenVerifier(
     };
   }
   return new OidcAccessTokenVerifier(config);
+}
+
+function developmentAuthAllowed(nodeEnv:string|undefined) {
+  return nodeEnv==='development'||nodeEnv==='test';
 }
 
 export function readOidcVerifierConfig(
@@ -120,6 +136,7 @@ export function readOidcVerifierConfig(
     actorIdClaim:claimName(env.OIDC_ACTOR_ID_CLAIM,'sub'),
     capabilitiesClaim:claimName(env.OIDC_CAPABILITIES_CLAIM,'capabilities'),
     clockToleranceSeconds:boundedInteger(env.OIDC_CLOCK_TOLERANCE_SECONDS,5,0,60),
+    fullAdminEmails:emailList(env.OIDC_FULL_ADMIN_EMAILS),
   };
 }
 
@@ -166,3 +183,10 @@ function boundedInteger(
 
 const csv=(value?:string)=>String(value??'').split(',')
   .map(item=>item.trim()).filter(Boolean);
+
+function emailList(value?:string) {
+  const emails=csv(value).map(email=>email.toLowerCase());
+  if(emails.some(email=>!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)))
+    throw new Error('OIDC_FULL_ADMIN_EMAILS contains an invalid email');
+  return [...new Set(emails)];
+}

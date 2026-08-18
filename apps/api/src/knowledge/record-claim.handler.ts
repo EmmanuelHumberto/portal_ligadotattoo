@@ -5,6 +5,7 @@ import { OutboxRepository } from '../platform/outbox.repository';
 import { PostgresAuditRepository } from '../platform/audit.repository';
 import { Claim } from './claim.domain';
 import { ClaimRepository } from './claim.repository';
+import type {ClaimInput} from './admin-knowledge.input';
 
 @Injectable()
 export class RecordClaimHandler {
@@ -15,7 +16,7 @@ export class RecordClaimHandler {
     private readonly audit:PostgresAuditRepository,
   ) {}
 
-  execute(input:any,actorId?:string) {
+  execute(input:ClaimInput,actorId?:string) {
     return this.txm.run(async tx => {
       const claim=Claim.record({ id:randomUUID(), ...input });
       await this.claims.insert(claim,tx);

@@ -24,6 +24,10 @@ export default async function Page(){
       <option value="TAKEDOWN">Remoção</option>
      </select>
     </label>
+    <label>Fundamento da decisão
+     <textarea name="basis" required rows={3}
+      placeholder="Licença, autorização do titular ou justificativa verificável"/>
+    </label>
    </div>
    <div className="adminActions">
     <button className="primary" type="submit">Aplicar direitos</button>

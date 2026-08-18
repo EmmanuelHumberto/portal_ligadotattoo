@@ -1,16 +1,19 @@
 import Link from 'next/link';
 import {GlobalSearch} from './global-search';
+import {PublicNavigation} from './public-navigation';
 
 export function SiteHeader(){
- const nav:Array<[string,string]>=[
-  ['Máquinas','/maquinas'],['Fontes','/fontes'],['Acessórios','/acessorios'],
-  ['Cartuchos','/cartuchos'],['Tintas','/tintas'],['Marcas','/marcas'],['Notícias','/noticias'],
-  ['Blog Técnico','/blog'],['Eventos','/eventos'],['Ofertas','/ofertas'],
- ];
- return <header className="header"><div className="shell headerIn">
-  <Link className="brand" href="/">PORTAL TATTOO<small>CONHECIMENTO · TECNOLOGIA · ARTE</small></Link>
-  <nav aria-label="Principal">{nav.map(([label,href])=><Link key={href}
-    href={href}>{label}</Link>)}</nav>
-  <GlobalSearch/>
- </div></header>
+ return <header className="header">
+  <div className="shell headerPrimary">
+   <Link className="brand" href="/">
+    <span className="brandMarkWord">PT</span>
+    <span>Portal Tattoo<small>equipamento · técnica · cultura</small></span>
+   </Link>
+   <GlobalSearch/>
+   <Link className="headerAdmin" href="/admin">Área administrativa</Link>
+  </div>
+  <div className="headerNavFrame">
+   <PublicNavigation/>
+  </div>
+ </header>
 }

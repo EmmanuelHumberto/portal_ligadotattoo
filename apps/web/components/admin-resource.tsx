@@ -43,10 +43,10 @@ export function AdminAccessState({status}:{status:AdminApiStatus}){
  </div>;
 }
 
-export function AdminPageHeader({eyebrow,title,description}:{
- eyebrow:string;title:string;description:string;
+export function AdminPageHeader({eyebrow,title,description,compact=false}:{
+ eyebrow:string;title:string;description:string;compact?:boolean;
 }){
- return <header className="adminPageHeader">
+ return <header className={`adminPageHeader${compact?' isCompact':''}`}>
   <p className="eyebrow">{eyebrow}</p><h1>{title}</h1><p>{description}</p>
  </header>;
 }

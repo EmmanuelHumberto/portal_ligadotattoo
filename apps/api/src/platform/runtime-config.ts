@@ -7,6 +7,7 @@ export type RuntimeConfig={
   defaultProvider:string;
   fallbackOrder:string[];
   openaiKey?:string;anthropicKey?:string;deepseekKey?:string;
+  ollamaBaseUrl:string;ollamaContextWindow:number;
  };
 };
 
@@ -36,6 +37,10 @@ export function validateRuntimeConfig(env:NodeJS.ProcessEnv):RuntimeConfig{
    openaiKey:env.OPENAI_API_KEY,
    anthropicKey:env.ANTHROPIC_API_KEY,
    deepseekKey:env.DEEPSEEK_API_KEY,
+   ollamaBaseUrl:env.OLLAMA_BASE_URL?.trim()||'http://127.0.0.1:11434',
+   ollamaContextWindow:boundedInteger(
+    env.OLLAMA_CONTEXT_WINDOW,4096,512,32768,'OLLAMA_CONTEXT_WINDOW',
+   ),
   },
  };
 }

@@ -87,13 +87,6 @@ export class GenerateAIDraftHandler {
     }, input.actorId);
 
     await this.txm.run(async tx => {
-      await tx.query(
-        `insert into ai.execution
-         (id,workload_key,provider_key,model_key,status,latency_ms,
-          correlation_id,created_at)
-         values (gen_random_uuid(),'editorial.draft',$1,$2,'SUCCEEDED',$3,$4,now())`,
-        [result.providerKey,result.modelKey,result.latencyMs,correlationId],
-      );
       await this.audit.append({
         actorId:input.actorId,action:'editorial.ai_draft_generated',
         subjectType:'StoryCandidate',subjectId:input.candidateId ?? content.id,

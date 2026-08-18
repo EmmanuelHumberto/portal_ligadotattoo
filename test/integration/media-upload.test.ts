@@ -11,7 +11,11 @@ import {UploadMediaHandler} from '../../apps/api/src/media/upload-media.handler'
 import {PostgresAuditRepository} from '../../apps/api/src/platform/audit.repository';
 import {OutboxRepository} from '../../apps/api/src/platform/outbox.repository';
 import {TransactionManager} from '../../apps/api/src/platform/transaction-manager';
-import {createRuntimeProcessors,ProcessorRegistry} from '../../apps/worker/src/processors';
+import {DatabaseEventRouter} from '../../apps/worker/src/event-router';
+import {JobRunner} from '../../apps/worker/src/job-runner';
+import {ImageVariantHandler} from '../../apps/worker/src/media/image-variant.handler';
+import {createImageProcessor} from '../../apps/worker/src/media/s3-image-processor';
+import {OutboxDispatcher} from '../../apps/worker/src/outbox-dispatcher';
 
 const databaseUrl=process.env.TEST_DATABASE_URL;
 const endpoint=process.env.TEST_OBJECT_STORAGE_ENDPOINT;
@@ -89,13 +93,21 @@ integration('media upload',()=>{
   );
   const row=outbox.rows[0];
   eventId=row.id;
-  const registry=new ProcessorRegistry(createRuntimeProcessors(pool,{
+  const workerStorage={
    OBJECT_STORAGE_BUCKET:bucket,OBJECT_STORAGE_ENDPOINT:endpoint,
    OBJECT_STORAGE_REGION:'us-east-1',OBJECT_STORAGE_ACCESS_KEY:accessKey,
    OBJECT_STORAGE_SECRET_KEY:secretKey,OBJECT_STORAGE_FORCE_PATH_STYLE:'true',
-  }));
-  for(let attempt=0;attempt<4;attempt++)
-   await registry.tick({signal:new AbortController().signal});
+  };
+  const dispatcher=new OutboxDispatcher(pool,new DatabaseEventRouter(pool));
+  await dispatcher.dispatchBatch(1,eventId);
+  const queued=await pool.query(
+   'select id from ops.job where source_event_id=$1',[eventId],
+  );
+  const variantHandler=new ImageVariantHandler(
+   pool,createImageProcessor(workerStorage),
+  );
+  const runner=new JobRunner(pool,new Map([[variantHandler.type,variantHandler]]));
+  await runner.runOne(queued.rows[0].id);
   const [published,jobs]=await Promise.all([
    pool.query('select status from ops.outbox_event where id=$1',[eventId]),
    pool.query('select status,count(*) over()::int count from ops.job where source_event_id=$1',[eventId]),

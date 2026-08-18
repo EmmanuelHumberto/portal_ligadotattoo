@@ -2,7 +2,8 @@ export type AIWorkload =
   | 'editorial.classify'
   | 'editorial.summarize'
   | 'editorial.draft'
-  | 'editorial.extract_event';
+  | 'editorial.extract_event'
+  | 'catalog.translate';
 
 export type AIRequest = {
   workload:AIWorkload;

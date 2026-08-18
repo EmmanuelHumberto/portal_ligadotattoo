@@ -1,45 +1,53 @@
 import {
-  BadRequestException,Body,Controller,Get,HttpCode,Inject,NotFoundException,
-  Param,Patch,Post,Query,UploadedFile,UseInterceptors,
+  Body,Controller,Get,HttpCode,Param,ParseUUIDPipe,Patch,Post,Query,
+  UploadedFile,UseInterceptors,
 } from '@nestjs/common';
 import {FileInterceptor} from '@nestjs/platform-express';
-import {randomUUID} from 'node:crypto';
-import {Pool} from 'pg';
 import {Actor} from '../iam/actor.decorator';
+import type {ActorContext} from '../iam/actor-context';
 import {RequireCapability} from '../iam/require-capability.decorator';
-import {PG_POOL} from '../platform/database.module';
-import {UploadMediaHandler} from '../media/upload-media.handler';
-import {CreateProductHandler} from './create-product.handler';
+import {AttachProductImageHandler} from './attach-product-image.handler';
+import {
+  discoveryInput,productCreateInput,productMetaInput,productRenameInput,productSpecsInput,
+  productTypeInput,
+} from './admin-product.input';
 import {AdminProductQuery} from './admin-product.query';
+import {CreateProductHandler} from './create-product.handler';
+import {RenameProductHandler} from './rename-product.handler';
+import {RunCatalogDiscoveryHandler} from './run-catalog-discovery.handler';
+import {SetProductSpecsHandler} from './set-product-specs.handler';
+import {SetProductTypeHandler} from './set-product-type.handler';
+import {UpdateProductMetaHandler} from './update-product-meta.handler';
 
 @Controller('admin/products')
 export class ProductController {
   constructor(
-    private readonly createProduct: CreateProductHandler,
-    private readonly products: AdminProductQuery,
-    private readonly uploads: UploadMediaHandler,
-    @Inject(PG_POOL) private readonly pool: Pool,
+    private readonly createProduct:CreateProductHandler,
+    private readonly products:AdminProductQuery,
+    private readonly attachImage:AttachProductImageHandler,
+    private readonly setSpecsHandler:SetProductSpecsHandler,
+    private readonly setTypeHandler:SetProductTypeHandler,
+    private readonly updateMetaHandler:UpdateProductMetaHandler,
+    private readonly renameHandler:RenameProductHandler,
+    private readonly discovery:RunCatalogDiscoveryHandler,
   ) {}
 
   @Get()
   @RequireCapability('catalog.read')
-  list(@Query('type') type?:string){ return this.products.list(100, type); }
+  list(@Query('type') type?:string){return this.products.list(100,type);}
 
   @Get(':id')
   @RequireCapability('catalog.read')
-  detail(@Param('id') id:string){ return this.products.byId(id); }
+  detail(@Param('id',ParseUUIDPipe) id:string){return this.products.byId(id);}
 
   @Post()
   @HttpCode(201)
   @RequireCapability('catalog.write')
-  async create(@Body() body: any) {
-    const p = await this.createProduct.execute(body);
-    return {
-      id:p.id, manufacturerId:p.manufacturerId,
-      productTypeKey:p.productTypeKey, name:p.name, slug:p.slug,
-      brandId:p.brandId, modelCode:p.modelCode,
-      lifecycle:p.lifecycle, version:p.version,
-    };
+  async create(@Body() body:unknown,@Actor() actor:ActorContext){
+    const p=await this.createProduct.execute(productCreateInput(body),actor.actorId);
+    return {id:p.id,manufacturerId:p.manufacturerId,
+      productTypeKey:p.productTypeKey,name:p.name,slug:p.slug,
+      brandId:p.brandId,modelCode:p.modelCode,lifecycle:p.lifecycle,version:p.version};
   }
 
   @Post(':id/image')
@@ -47,266 +55,42 @@ export class ProductController {
   @UseInterceptors(FileInterceptor('file',{
     limits:{fileSize:25*1024*1024,files:1,fields:5},
   }))
-  async attachImage(
-    @Param('id') id:string,
-    @UploadedFile() file:Express.Multer.File,
-    @Actor() actor:any,
-  ) {
-    const asset = await this.uploads.execute(file, actor.actorId);
-
-    await this.pool.query(
-      `update media.media_asset
-          set rights_status='PERMITTED',version=version+1,updated_at=now()
-        where id=$1`,
-      [asset.id],
-    );
-    await this.pool.query(
-      `insert into media.media_rights
-       (id,media_asset_id,status,basis,is_current,decided_by,decided_at)
-       values (gen_random_uuid(),$1,'PERMITTED','CURATOR_UPLOAD',true,$2,now())`,
-      [asset.id, actor.actorId],
-    );
-    await this.pool.query(
-      `insert into media.media_link
-       (id,media_asset_id,subject_type,subject_id,role,is_primary,sort_order)
-       values (gen_random_uuid(),$1,'PRODUCT_MODEL',$2,'hero',true,0)`,
-      [asset.id, id],
-    );
-
-    return {mediaId:asset.id, productId:id};
+  image(@Param('id',ParseUUIDPipe) id:string,
+    @UploadedFile() file:Express.Multer.File|undefined,@Actor() actor:ActorContext){
+    return this.attachImage.execute(id,file,actor.actorId);
   }
 
   @Post(':id/specs')
   @RequireCapability('catalog.write')
-  async setSpecs(
-    @Param('id') id:string,@Body() body:any,@Actor() actor:any,
-  ) {
-    const facts:Array<{key:string;value:unknown;unit:string|null}> = [];
-    const summary=String(body.summary ?? '').trim();
-    const description=String(body.description ?? '').trim();
-    if(summary)facts.push({key:'summary',value:summary,unit:null});
-    if(description)facts.push({key:'description',value:description,unit:null});
-    const specs=Array.isArray(body.specs)?body.specs:[];
-    for(const s of specs){
-      const key=String(s?.key ?? '').trim();
-      if(!key)continue;
-      facts.push({key,value:s.value,unit:s.unit?String(s.unit):null});
-    }
-    for(const f of facts){
-      await this.pool.query(
-        `update knowledge.canonical_fact
-            set valid_to=now()
-          where subject_type='PRODUCT_MODEL' and subject_id=$1
-            and property_key=$2 and valid_to is null`,
-        [id,f.key],
-      );
-      const claimId=randomUUID();
-      await this.pool.query(
-        `insert into knowledge.claim
-         (id,subject_type,subject_id,property_key,value,claimant_type,
-          observed_at,status,version,created_at)
-         values ($1,'PRODUCT_MODEL',$2,$3,$4::jsonb,'CURATOR',
-          now(),'ACTIVE',1,now())`,
-        [claimId,id,f.key,JSON.stringify(f.value)],
-      );
-      const proposalId=randomUUID();
-      await this.pool.query(
-        `insert into knowledge.canonical_proposal
-         (id,subject_type,subject_id,property_key,proposed_value,evidence_ids,
-          status,created_by,created_at,decided_by,decided_at,decision_reason,
-          version)
-         values ($1,'PRODUCT_MODEL',$2,$3,$4::jsonb,ARRAY[$5]::uuid[],'APPROVED',
-          $6,now(),$6,now(),'CURATOR_MANUAL',1)`,
-        [proposalId,id,f.key,JSON.stringify(f.value),claimId,actor.actorId],
-      );
-      await this.pool.query(
-        `insert into knowledge.canonical_fact
-         (id,subject_type,subject_id,property_key,value,unit,valid_from,
-          proposal_id,decided_by,decision_reason,version)
-         values (gen_random_uuid(),'PRODUCT_MODEL',$1,$2,$3::jsonb,$4,now(),
-          $5,$6,'CURATOR_MANUAL',1)`,
-        [id,f.key,JSON.stringify(f.value),f.unit,proposalId,actor.actorId],
-      );
-    }
-    return {facts:facts.length};
+  setSpecs(@Param('id',ParseUUIDPipe) id:string,@Body() body:unknown,
+    @Actor() actor:ActorContext){
+    return this.setSpecsHandler.execute(id,productSpecsInput(body),actor.actorId);
   }
 
   @Patch(':id/type')
   @RequireCapability('catalog.write')
-  async setType(@Param('id') id:string, @Body() body:any, @Actor() actor:any) {
-    const typeKey=String(body?.productTypeKey ?? '').trim().toUpperCase();
-    const allowed=['PEN','ROTARY','COIL','CARTRIDGE','INK','BATTERY','POWER_SUPPLY','ACCESSORY'];
-    if(!allowed.includes(typeKey)){
-      throw new BadRequestException(`Tipo de produto inválido: ${typeKey}`);
-    }
-
-    const updated=await this.pool.query(
-      `update catalog.product_model
-          set product_type_key=$2, version=version+1, updated_at=now()
-        where id=$1
-        returning id, name, slug, product_type_key`,
-      [id, typeKey],
-    );
-    if(!updated.rowCount)throw new NotFoundException('Produto não encontrado');
-    const p=updated.rows[0];
-    const actorId=actor?.actorId ?? 'system';
-
-    // Auditoria: decisão manual registrada como fact (mesmo padrão do setSpecs).
-    const claimId=randomUUID();
-    await this.pool.query(
-      `insert into knowledge.claim
-       (id,subject_type,subject_id,property_key,value,claimant_type,
-        observed_at,confidence,status,version,created_at)
-       values ($1,'PRODUCT_MODEL',$2,'product_type',$3::jsonb,'CURATOR',
-        now(),1.0,'ACTIVE',1,now())`,
-      [claimId, id, JSON.stringify(typeKey)],
-    );
-    const proposalId=randomUUID();
-    await this.pool.query(
-      `insert into knowledge.canonical_proposal
-       (id,subject_type,subject_id,property_key,proposed_value,evidence_ids,
-        status,created_by,created_at,decided_by,decided_at,decision_reason,version)
-       values ($1,'PRODUCT_MODEL',$2,'product_type',$3::jsonb,ARRAY[$4]::uuid[],
-        'APPROVED',$5,now(),$5,now(),'CURATOR_MANUAL',1)`,
-      [proposalId, id, JSON.stringify(typeKey), claimId, actorId],
-    );
-    await this.pool.query(
-      `insert into knowledge.canonical_fact
-       (id,subject_type,subject_id,property_key,value,unit,valid_from,
-        proposal_id,decided_by,decision_reason,version)
-       values (gen_random_uuid(),'PRODUCT_MODEL',$1,'product_type',$2::jsonb,
-        null,now(),$3,$4,'CURATOR_MANUAL',1)`,
-      [id, JSON.stringify(typeKey), proposalId, actorId],
-    );
-
-    // Re-sincroniza a busca: o tipo compõe o subtitle do search_document.
-    const info=await this.pool.query(
-      `select m.name manufacturer_name, b.name brand_name
-         from catalog.product_model p
-         join catalog.manufacturer m on m.id=p.manufacturer_id
-         left join catalog.brand b on b.id=p.brand_id
-        where p.id=$1`,
-      [id],
-    );
-    const i=info.rows[0] ?? {};
-    const subtitle=[i.manufacturer_name, i.brand_name, typeKey]
-      .filter(Boolean).join(' · ');
-    await this.pool.query(
-      `insert into search.search_document
-       (id,source_type,source_id,document_type,title,normalized_title,subtitle,
-        public_url,is_public,search_vector,updated_at)
-       values ($1,'PRODUCT_MODEL',$1,'PRODUCT',$2,lower($2),$3,$4,true,
-         setweight(to_tsvector('simple',coalesce($2,'')),'A') ||
-         setweight(to_tsvector('simple',coalesce($3,'')),'B'),now())
-       on conflict (source_type,source_id)
-       do update set subtitle=excluded.subtitle,
-                     search_vector=excluded.search_vector,
-                     updated_at=now()`,
-      [id, p.name, subtitle, `/maquinas/${p.slug}`],
-    );
-
-    return {id, name:p.name, productTypeKey:typeKey};
+  setType(@Param('id',ParseUUIDPipe) id:string,@Body() body:unknown,
+    @Actor() actor:ActorContext){
+    return this.setTypeHandler.execute(id,productTypeInput(body),actor.actorId);
   }
 
   @Patch(':id/meta')
   @RequireCapability('catalog.write')
-  async updateMeta(@Param('id') id:string, @Body() body:any) {
-    const allowed=['ANNOUNCED','ACTIVE','DISCONTINUED','LEGACY','UNKNOWN'];
-    const sets:string[] = [];
-    const values:any[] = [];
-
-    if (body.lifecycle !== undefined) {
-      const lifecycle=String(body.lifecycle ?? '').trim().toUpperCase();
-      if(!allowed.includes(lifecycle)){
-        throw new BadRequestException(`Ciclo de vida inválido: ${lifecycle}`);
-      }
-      values.push(lifecycle);
-      sets.push(`lifecycle=$${values.length}`);
-    }
-
-    if (body.modelCode !== undefined) {
-      const modelCode=(body.modelCode===null || body.modelCode==='')
-        ? null : String(body.modelCode).trim();
-      values.push(modelCode);
-      sets.push(`model_code=$${values.length}`);
-    }
-
-    if (body.releaseDate !== undefined) {
-      const v=(body.releaseDate===null || body.releaseDate==='')
-        ? null : String(body.releaseDate).trim();
-      if (v!==null && !/^\d{4}-\d{2}-\d{2}$/.test(v)){
-        throw new BadRequestException(`Data inválida (releaseDate): ${v}`);
-      }
-      values.push(v);
-      sets.push(`release_date=$${values.length}`);
-    }
-
-    if (body.discontinuedDate !== undefined) {
-      const v=(body.discontinuedDate===null || body.discontinuedDate==='')
-        ? null : String(body.discontinuedDate).trim();
-      if (v!==null && !/^\d{4}-\d{2}-\d{2}$/.test(v)){
-        throw new BadRequestException(`Data inválida (discontinuedDate): ${v}`);
-      }
-      values.push(v);
-      sets.push(`discontinued_date=$${values.length}`);
-    }
-
-    if(!sets.length) throw new BadRequestException('Nada para atualizar');
-
-    values.push(id);
-    const r=await this.pool.query(
-      `update catalog.product_model
-          set ${sets.join(', ')}, version=version+1, updated_at=now()
-        where id=$${values.length}
-        returning id, name, slug, model_code, lifecycle, release_date, discontinued_date`,
-      values,
-    );
-    if(!r.rowCount) throw new NotFoundException('Produto não encontrado');
-    return r.rows[0];
+  updateMeta(@Param('id',ParseUUIDPipe) id:string,@Body() body:unknown,
+    @Actor() actor:ActorContext){
+    return this.updateMetaHandler.execute(id,productMetaInput(body),actor.actorId);
   }
 
   @Patch(':id')
   @RequireCapability('catalog.write')
-  async rename(@Param('id') id:string, @Body() body:any) {
-    const name=String(body?.name ?? '').trim();
-    if(name.length<3)throw new BadRequestException('Nome inválido (mínimo 3 caracteres)');
-    const r=await this.pool.query(
-      `update catalog.product_model
-          set name=$2, normalized_name=lower($2), version=version+1, updated_at=now()
-        where id=$1 returning id, name, slug`,
-      [id, name],
-    );
-    if(!r.rowCount)throw new NotFoundException('Produto não encontrado');
-    const p=r.rows[0];
-
-    // Re-sincroniza a busca (o título do documento é o nome do produto).
-    await this.pool.query(
-      `update search.search_document
-          set title=$2, normalized_title=lower($2),
-              search_vector = setweight(to_tsvector('simple', coalesce($2,'')),'A') ||
-                               setweight(to_tsvector('simple', coalesce(subtitle,'')),'B'),
-              updated_at=now()
-        where source_type='PRODUCT_MODEL' and source_id=$1`,
-      [id, name],
-    );
-
-    return {id, name:p.name, slug:p.slug};
+  rename(@Param('id',ParseUUIDPipe) id:string,@Body() body:unknown,
+    @Actor() actor:ActorContext){
+    return this.renameHandler.execute(id,productRenameInput(body),actor.actorId);
   }
 
   @Post('discovery/run')
   @RequireCapability('catalog.write')
-  async runDiscovery(@Body() body:any) {
-    const manufacturerSlug=String(body?.manufacturerSlug ?? '').trim();
-    const machinesOnly=Boolean(body?.machinesOnly);
-    const r=await this.pool.query(
-      `insert into ops.job
-       (id,job_type,job_version,payload,status,available_at,deduplication_key)
-       values (gen_random_uuid(),'catalog.discover_machines',1,$1::jsonb,'PENDING',now(),$2)
-       on conflict (job_type,deduplication_key)
-         where deduplication_key is not null do nothing`,
-      [JSON.stringify({manufacturerSlug,machinesOnly}),
-       'discovery:'+(manufacturerSlug||'all')+':'+(machinesOnly?'machines':'all')+':'+new Date().toISOString().slice(0,16)],
-    );
-    return {enqueued:r.rowCount ?? 0, manufacturerSlug:manufacturerSlug||null, machinesOnly};
+  runDiscovery(@Body() body:unknown,@Actor() actor:ActorContext){
+    return this.discovery.execute(discoveryInput(body),actor.actorId);
   }
 }

@@ -2,13 +2,17 @@ import type {MetadataRoute} from 'next';
 import {connection} from 'next/server';
 import {SITE} from '../lib/site';
 import {api} from '../lib/api';
+import type {EditorialPage,ProductPage} from '../lib/public-api-contracts';
 
 export default async function sitemap():Promise<MetadataRoute.Sitemap>{
  await connection();
  const [products,editorial,events]=await Promise.all([
-  api('/public/products?limit=100').catch(()=>({items:[]})),
-  api('/public/editorial').catch(()=>({items:[]})),
-  api('/public/editorial?type=EVENT').catch(()=>({items:[]})),
+  api<ProductPage>('/public/products?limit=100')
+   .catch(()=>({items:[],meta:{}})),
+  api<EditorialPage>('/public/editorial')
+   .catch(()=>({items:[],meta:{}})),
+  api<EditorialPage>('/public/editorial?type=EVENT')
+   .catch(()=>({items:[],meta:{}})),
  ]);
  const staticPaths=['/','/maquinas','/fontes','/acessorios','/cartuchos','/tintas','/marcas','/noticias','/blog','/eventos','/ofertas'];
  const rows:MetadataRoute.Sitemap=staticPaths.map(path=>({
@@ -17,7 +21,6 @@ export default async function sitemap():Promise<MetadataRoute.Sitemap>{
  }));
  for(const p of products.items??[])rows.push({
   url:`${SITE.url}/maquinas/${p.slug}`,
-  lastModified:p.updatedAt?new Date(p.updatedAt):undefined,
   changeFrequency:'weekly',priority:.8,
  });
  for(const x of editorial.items??[])rows.push({
